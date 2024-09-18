@@ -1,8 +1,8 @@
-use tstream::cli;
 use clap::Parser;
+use tstream::cli;
 
 fn main() {
-  let app = cli::TStreamCli::parse();
+    let app = cli::TStreamCli::parse();
 
-  app.run()
+    app.run()
 }

@@ -1,4 +1,4 @@
-use crate::stream;
+use crate::{poll, stream};
 use clap::Parser;
 /// start the stream with some constants
 #[derive(Parser, Debug)]
@@ -17,9 +17,13 @@ pub struct TStreamCli {
     pub price: Option<f64>,
 }
 
-
 impl TStreamCli {
-  pub fn run(&self) {
-    stream::start_stream();
-  }
+    pub fn run(&self) {
+        let (tx, rx) = stream::init();
+        let handle = stream::listen(rx);
+
+        poll::start_polling(tx);
+
+        handle.join().expect("could not complete tasks in stream");
+    }
 }
