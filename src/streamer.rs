@@ -1,4 +1,5 @@
 use crate::{poll_service, trade_service};
+use log::{info, error};
 
 /// creates a Streamer struct, which will enclose the services
 /// needed to run the trade stream
@@ -23,7 +24,14 @@ impl Streamer {
         }
     }
 
-    pub fn start(&self) {
+    // TODO: determine keys type
+    pub fn start(&self, keys: String) {
+        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+
+
+        println!("trade stream started");
+        info!("using keys: {}", keys);
+
         let (tx, rx) = trade_service::init();
         // start the trade service
         let trade_service_handle = trade_service::listen(rx);

@@ -1,4 +1,7 @@
-use crate::streamer::Streamer;
+use crate::{
+  key_manager::get_account_from_prompt,
+  streamer::Streamer,
+};
 use clap::Parser;
 /// start the stream with some constants
 #[derive(Parser, Debug)]
@@ -19,7 +22,9 @@ pub struct TSCli {
 
 impl TSCli {
     pub fn run(&self) {
+        let keys = get_account_from_prompt("osmo").expect("could not get keys from prompt");
+
         let s = Streamer::new(self.daily_dollar, self.units, self.price);
-        s.start();
+        s.start(keys);
     }
 }

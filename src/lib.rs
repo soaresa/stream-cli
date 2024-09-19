@@ -1,4 +1,5 @@
 pub mod cli;
-pub mod poll_service;
+mod key_manager;
+pub(crate) mod poll_service;
 pub mod streamer;
-pub mod trade_service;
+pub(crate) mod trade_service;
