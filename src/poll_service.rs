@@ -1,4 +1,4 @@
-use crate::stream::TradeTask;
+use crate::trade_service::TradeTask;
 use std::borrow::BorrowMut;
 use std::sync::mpsc::Sender;
 use std::thread::{self, JoinHandle};
