@@ -1,4 +1,4 @@
-use log2::*;
+use log::error;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
 

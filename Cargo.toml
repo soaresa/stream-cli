@@ -6,5 +6,6 @@ edition = "2021"
 [dependencies]
 anyhow = "1.0.62"
 clap = { version = "4.3.5", features = ["derive", "unstable-styles"] }
+log = "0.4.22"
 log2 = "0.1.11"
 rpassword = "5.0"
