@@ -1,6 +1,6 @@
 use crate::{poll_service, trade_service};
-use log::{info, error};
-
+// use log::{info, error};
+use log2::*;
 /// creates a Streamer struct, which will enclose the services
 /// needed to run the trade stream
 // main app logic, and entry point for external libraries
@@ -26,8 +26,18 @@ impl Streamer {
 
     // TODO: determine keys type
     pub fn start(&self, keys: String) {
-        env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
+        let _log2 = log2::open("ts.log")
+            .size(100 * 1024 * 1024)
+            .rotate(20)
+            .tee(true)
+            .module(true)
+            .start();
 
+        trace!("send order request to server");
+        debug!("receive order response");
+        info!("order was executed");
+        warn!("network speed is slow");
+        error!("network connection was broken");
 
         println!("trade stream started");
         info!("using keys: {}", keys);

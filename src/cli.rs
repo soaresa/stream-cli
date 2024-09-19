@@ -1,7 +1,4 @@
-use crate::{
-  key_manager::get_account_from_prompt,
-  streamer::Streamer,
-};
+use crate::{key_manager::get_account_from_prompt, streamer::Streamer};
 use clap::Parser;
 /// start the stream with some constants
 #[derive(Parser, Debug)]

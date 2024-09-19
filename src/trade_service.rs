@@ -1,6 +1,6 @@
+use log2::*;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
-use log::error;
 
 /// the trade tasks that the stream processes
 #[derive(Debug, Clone)]

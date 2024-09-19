@@ -1,8 +1,4 @@
-
-use std::{
-  env,
-  process::exit
-};
+use std::{env, process::exit};
 
 /// Prompts user to type mnemonic securely.
 // TODO: decide what the return of the function is
