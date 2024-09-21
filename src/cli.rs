@@ -10,7 +10,7 @@ use num_format::{Locale, ToFormattedString};
 pub struct TSCli {
     /// dollar goal per day
     #[arg(short, long)]
-    pub daily_dollar: u64,
+    pub daily_amount_out: u64,
     
     /// streams per day
     #[arg(long)]
@@ -46,7 +46,7 @@ impl TSCli {
         // confirm address and parameters
         if get_user_confirmation(
             &signer.get_account_address(),
-            self.daily_dollar,
+            self.daily_amount_out,
             self.daily_streams,
             self.min_price,
         ) {
@@ -56,7 +56,7 @@ impl TSCli {
             std::process::exit(0);
         }
 
-        let streamer = Streamer::new(self.daily_dollar, self.daily_streams, self.min_price);
+        let streamer = Streamer::new(self.daily_amount_out, self.daily_streams, self.min_price);
         streamer.start(&signer).await;
     }
 }

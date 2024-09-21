@@ -8,8 +8,8 @@ use tokio::task::LocalSet;
 /// needed to run the trade stream
 // main app logic, and entry point for external libraries
 pub struct Streamer {
-    /// dollar goal per day
-    pub daily_dollar: u64,
+    /// amount goal per day
+    pub daily_amount_out: u64,
 
     /// streams per day
     pub daily_streams: u64,
@@ -19,9 +19,9 @@ pub struct Streamer {
 }
 
 impl Streamer {
-    pub fn new(daily_dollar: u64, daily_streams: u64, min_price: f64) -> Self {
+    pub fn new(daily_amount_out: u64, daily_streams: u64, min_price: f64) -> Self {
         Streamer {
-            daily_dollar: daily_dollar * 1_000_000, 
+            daily_amount_out: daily_amount_out * 1_000_000, 
             daily_streams,
             min_price
         }
@@ -34,7 +34,7 @@ impl Streamer {
         let local = LocalSet::new();
 
         // Clone necessary values to move into the async tasks
-        let daily_dollar = self.daily_dollar;
+        let daily_amount_out = self.daily_amount_out;
         let daily_streams = self.daily_streams;
         let min_price = self.min_price;
 
@@ -44,7 +44,7 @@ impl Streamer {
         local.run_until(async move {
             poll_service::start_polling(
                 signer,
-                daily_dollar,
+                daily_amount_out,
                 daily_streams,
                 min_price,
             )

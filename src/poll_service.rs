@@ -10,7 +10,7 @@ const POLL_INTERVAL: u64 = 1000; // in milliseconds
 
 pub async fn start_polling(
     signer: &Signer,
-    daily_dollar: u64,
+    daily_amount_out: u64,
     streams_per_day: u64,
     min_price: f64,
 ) {
@@ -18,7 +18,7 @@ pub async fn start_polling(
     let mut end_window_time: DateTime<Utc> = Utc::now();
     let mut next_trade: DateTime<Utc> = Utc::now();
     let mut trade_executed = false;
-    let amount_out: u64 = daily_dollar / streams_per_day;
+    let amount_out: u64 = daily_amount_out / streams_per_day;
     let constants = get_constants();
 
     loop {
