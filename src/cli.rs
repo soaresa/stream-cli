@@ -1,4 +1,4 @@
-use crate::{key_manager::get_account_from_prompt, streamer::Streamer};
+use crate::{constants::get_constants, key_manager::get_account_from_prompt, streamer::Streamer};
 use clap::Parser;
 use std::io::{self, Write};
 use crate::chains::osmosis::osmosis_key_service::Signer;
@@ -8,7 +8,7 @@ use num_format::{Locale, ToFormattedString};
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct TSCli {
-    /// dollar goal per day
+    /// amount out goal per day
     #[arg(short, long)]
     pub daily_amount_out: u64,
     
@@ -62,13 +62,15 @@ impl TSCli {
 }
 
 // Function to get user confirmation (y/n)
-fn get_user_confirmation(address: &str, daily_dollar: u64, daily_streams: u64, min_price: f64) -> bool {
+fn get_user_confirmation(address: &str, daily_amount_out: u64, daily_streams: u64, min_price: f64) -> bool {
     // ask user to confirm the address and params
     println!("Please confirm the following details:");
-    println!(" - Address: {}", address);
-    println!(" - Daily Dollar: ${}", daily_dollar.to_formatted_string(&Locale::en));
-    println!(" - Daily Streams: {}", daily_streams.to_formatted_string(&Locale::en));
-    println!(" - Min Price: ${}", min_price);
+    println!(" 1. Address: {}", address);
+    println!(" 2. Daily Amount Out: {} {}", get_constants().token_out, daily_amount_out.to_formatted_string(&Locale::en));
+    println!(" 3. Daily Streams: {}", daily_streams.to_formatted_string(&Locale::en));
+    println!(" 4. Min Price: {} {}", get_constants().token_out, min_price);
+    println!(" 5. Token In: {}", get_constants().token_in);
+    println!(" 6. Pool ID: {}", get_constants().pool_id);
     
     print!("Do you want to continue? (y/n): ");
     io::stdout().flush().unwrap(); // Ensures the prompt is displayed correctly
@@ -85,7 +87,7 @@ fn get_user_confirmation(address: &str, daily_dollar: u64, daily_streams: u64, m
         "n" => false,
         _ => {
             println!("Invalid input, please enter 'y' or 'n'");
-            get_user_confirmation(address, daily_dollar, daily_streams, min_price) // Recursively ask again on invalid input
+            get_user_confirmation(address, daily_amount_out, daily_streams, min_price) // Recursively ask again on invalid input
         }
     }
 }
