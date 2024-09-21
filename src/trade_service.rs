@@ -1,45 +1,102 @@
+use cosmrs::proto::cosmos::tx::signing;
 use log::error;
 use std::sync::mpsc::{self, Receiver, Sender};
 use std::thread::{self, JoinHandle};
+use cosmrs::crypto::secp256k1::SigningKey;
+use crate::chains::coin::Coin;
+use crate::chains::osmosis::osmosis_pool_service;
+use crate::chains::osmosis::osmosis_key_service::Signer;
+use crate::chains::osmosis::osmosis_pool_service::fetch_coin_price;
+use crate::chains::osmosis::osmosis_account_service::fetch_account_balance;
+use num_format::{Locale, ToFormattedString};
 
 /// the trade tasks that the stream processes
-#[derive(Debug, Clone)]
 pub struct TradeTask {
-    /// trade price
-    pub price: f64,
-    /// trade units
-    pub units: f64,
-    /// optional, memo
-    pub memo: String,
+    pool_id: u64,
+    token_in: Coin,
+    token_out: Coin,
+    amount_out: u64,
+    min_price: f64,
 }
 
 impl TradeTask {
-    pub fn new(price: f64, units: f64, memo: String) -> Self {
-        TradeTask { price, units, memo }
+    pub fn new(
+        pool_id: u64,
+        token_in: Coin,
+        token_out: Coin,
+        amount_out: u64,
+        min_price: f64,
+    ) -> Self {
+        TradeTask {
+            pool_id,
+            token_in,
+            token_out,
+            amount_out,
+            min_price,
+        }
     }
 }
 
-pub(crate) fn init() -> (Sender<TradeTask>, Receiver<TradeTask>) {
-    mpsc::channel::<TradeTask>()
-}
+impl TradeTask {
+    pub async fn execute(&self, signer: &Signer) -> bool {
+        println!("### Executing trade task!!!!");
 
-// pub fn demo_send(tx: &Sender<TradeTask>) {
-//     // Push data to the channel
-//     let task1 = TradeTask::new(1.0, 2.0, "first task".to_string());
-//     let task2 = TradeTask::new(3.1, 4.1, "second task".to_string());
-//     tx.send(task1).unwrap();
-//     tx.send(task2).unwrap();
-// }
-
-pub(crate) fn listen(rx: Receiver<TradeTask>) -> JoinHandle<()> {
-    let worker = thread::spawn(move || loop {
-        let job = rx.recv();
-
-        match job {
-            Ok(job) => error!("Job: {:?}", job),
-            Err(_) => break,
+        // 1. Check coin price
+        let price = match fetch_coin_price(self.pool_id).await {
+            Ok(value) => {
+                value
+            }
+            Err(e) => {
+                error!("!!! Error fetching coin price: {:?}", e);
+                return false;
+            }
+        };
+        println!("Coin Price: {}", price);
+        if price < self.min_price {
+            println!("!!! Current price {} is less than min price {} to perform swap", price, self.min_price);
+            return false;
         }
-    });
+        println!(">>> 1. Current coin price is above min price");
 
-    worker
+        // 2. Check account balance
+        match fetch_account_balance(signer.get_account_address() , self.token_in).await {
+            Ok(balance) => {
+                println!("### Account balance: {} {}", self.token_in, balance.to_formatted_string(&Locale::en));
+                if balance < (self.amount_out as f64 / price) as u64 {
+                    eprintln!("!!! 2. Insufficient balance to perform swap");
+                    return false;
+                }
+            }
+            Err(e) => {
+                error!("!!! 2. Error fetching account balance: {:?}", e);
+                return false;
+            }
+        }
+        println!(">>> 2. Account has enough balance to perform swap");
+
+        // 3. Ensure account has enough balance to pay for fees
+        // TODO swamp coins to pay for fees
+        
+        // 4. Performa swap
+        let ret = osmosis_pool_service::perform_swap(
+            signer,
+            self.pool_id,
+            self.token_in,
+            self.token_out,
+            self.amount_out,
+            self.min_price,
+        ).await;
+        
+        // print response
+        match ret {
+            Ok(response) => {
+            println!(">>> 3. Swap successful! Response: {}", response);
+            },
+            Err(e) => {
+            eprintln!("!!! 3. Error performing swap: {:?}", e);
+            }
+        }
+
+        return true            
+    }
 }

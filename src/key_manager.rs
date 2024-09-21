@@ -1,7 +1,6 @@
 use std::{env, process::exit};
 
 /// Prompts user to type mnemonic securely.
-// TODO: decide what the return of the function is
 pub fn get_account_from_prompt(venue_name: &str) -> anyhow::Result<String> {
     println!("Enter your {} mnemonic:", venue_name);
 

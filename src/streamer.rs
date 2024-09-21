@@ -1,5 +1,9 @@
 use crate::{poll_service, trade_service};
+use crate::chains::osmosis::osmosis_key_service::Signer;
+use std::sync::Arc;
 use log::info;
+use tokio::task::LocalSet;
+
 /// creates a Streamer struct, which will enclose the services
 /// needed to run the trade stream
 // main app logic, and entry point for external libraries
@@ -7,38 +11,48 @@ pub struct Streamer {
     /// dollar goal per day
     pub daily_dollar: u64,
 
-    /// units
-    pub units: Option<f64>,
+    /// streams per day
+    pub daily_streams: u64,
 
-    /// target price
-    pub price: Option<f64>,
+    /// min price
+    pub min_price: f64,
 }
 
 impl Streamer {
-    pub fn new(daily_dollar: u64, units: Option<f64>, price: Option<f64>) -> Self {
+    pub fn new(daily_dollar: u64, daily_streams: u64, min_price: f64) -> Self {
         Streamer {
-            daily_dollar,
-            units,
-            price,
+            daily_dollar: daily_dollar * 1_000_000, 
+            daily_streams,
+            min_price
         }
     }
 
-    // TODO: determine keys type
-    pub fn start(&self, keys: String) {
-        info!("using keys: {}", keys);
+    pub async fn start(&self, signer: &Signer) {
+        info!("Using account: {}", signer.get_account_address());
 
-        let (tx, rx) = trade_service::init();
-        // start the trade service
-        let trade_service_handle = trade_service::listen(rx);
+        // Create a LocalSet to run !Send futures on the current thread
+        let local = LocalSet::new();
 
-        // start polling service
-        // does not exit, just continues on a loop.
-        let _unused_handle = poll_service::start_polling(tx);
+        // Clone necessary values to move into the async tasks
+        let daily_dollar = self.daily_dollar;
+        let daily_streams = self.daily_streams;
+        let min_price = self.min_price;
 
-        // join() keeps thread alive
-        println!("Stream started, exit with ctrl+c");
-        trade_service_handle
-            .join()
-            .expect("could not complete tasks in stream");
+        // Since we cannot clone `signer`, we need to ensure that it's used within the same scope
+
+        // Start the polling service
+        local.run_until(async move {
+            poll_service::start_polling(
+                signer,
+                daily_dollar,
+                daily_streams,
+                min_price,
+            )
+            .await;
+        })
+        .await;
+
+        // No need to spawn additional tasks that require `signer`
+        // Any additional tasks that need `signer` should be run within this scope
     }
 }

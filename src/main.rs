@@ -1,5 +1,7 @@
 use clap::Parser;
 use tstream::cli;
+use tstream::configs;
+use tokio::runtime::Runtime;
 
 fn main() {
     let _log2 = log2::open("ts.log")
@@ -9,5 +11,8 @@ fn main() {
       .module(true)
       .start();
 
-    cli::TSCli::parse().run();
+    configs::initialize();
+
+    let rt = Runtime::new().unwrap();
+    rt.block_on(cli::TSCli::parse().run());
 }
