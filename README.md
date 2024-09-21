@@ -1,5 +1,11 @@
 # Stream CLI
 
+🚧 **Alpha Testing Notice**
+
+This project is currently in **alpha testing**. It may contain bugs, and features are subject to change. Use caution when running this program, and do not use it with accounts holding significant funds.
+
+---
+
 Stream CLI is a command-line interface tool designed to automate the execution of crypto coin trades based on your strategy. It allows you to schedule trades over a 24-hour period, executing them at random times within specified windows, and adhering to user-defined parameters such as daily amount, number of trades, and minimum acceptable price.
 
 ## Table of Contents
