@@ -36,19 +36,29 @@ Stream CLI is a command-line interface tool designed to automate the execution o
 
 To install and run Stream CLI, follow these steps:
 
-1. **Clone the repository**.
+1. **Install dependencies**.
+
+```bash
+sudo apt install build-essential -y
+sudo apt-get install pkg-config -y
+sudo apt-get install libssl-dev -y
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source $HOME/.cargo/env
+```
+
+2. **Clone the repository**.
 
 ```bash
 git clone https://github.com/soaresa/stream-cli.git
 ```
 
-2. **Navigate to the repository root directory**.
+3. **Navigate to the repository root directory**.
 
 ```bash
 cd stream-cli
 ```
 
-3. **Build the program**.
+4. **Build the program**.
 
 ```bash
 cargo build
