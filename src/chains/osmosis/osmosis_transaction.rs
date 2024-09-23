@@ -11,6 +11,7 @@ use anyhow::Error;
 use reqwest::Client;
 use crate::configs::get_config_path;
 use crate::chains::coin::Coin;
+use regex::Regex;
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BroadcastedTx {
@@ -136,7 +137,13 @@ pub async fn fetch_transaction_details(txhash: &str, account_id: &str) -> Result
                             .unwrap_or(&vec![])
                             .iter()
                             .find(|attr| attr["key"] == "tokens_in")
-                            .and_then(|attr| attr["value"].as_str().map(|s| s.replace("uosmo", "").trim().parse().unwrap_or_default()));
+                            .and_then(|attr| {
+                                attr["value"].as_str().and_then(|s| {
+                                    // Regular expression to match leading digits
+                                    let re = Regex::new(r"^\d+").unwrap();
+                                    re.find(s).and_then(|m| m.as_str().parse::<u64>().ok())
+                                })
+                            });
                     }
                 },
                 _ => {}

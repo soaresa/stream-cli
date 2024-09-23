@@ -24,6 +24,7 @@ dirs-next = "2.0"
 secrecy = "0.8"
 zeroize = "1.5"
 num-format = "0.4"
+regex = "1"
 
 cosmrs = "0.7.1"
 osmosis-std = "=0.1.6"
