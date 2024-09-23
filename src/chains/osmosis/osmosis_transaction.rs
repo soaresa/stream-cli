@@ -174,7 +174,7 @@ pub async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<(
                 if code.is_some() {
                     // Transaction was executed
                     println!("Transaction executed: txhash: {}, tokens_in: {:?}", txhash, tokens_in);
-                    update_transaction_status(txhash, account_id, code, raw_log, gas_used, tokens_in).await?;
+                    update_transaction_status(txhash, account_id, "executed", code, raw_log, gas_used, tokens_in).await?;
                     return Ok(());
                 } else {
                     println!("Transaction not yet confirmed: txhash: {}, status code: {:?}", txhash, code);
@@ -195,6 +195,7 @@ pub async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<(
 pub async fn update_transaction_status(
     txhash: &str,
     account_id: &str,
+    status: &str,
     code: Option<u64>,
     raw_log: Option<String>,
     gas_used: Option<u64>,
@@ -212,7 +213,7 @@ pub async fn update_transaction_status(
             .and_then(|array| array.iter_mut().find(|tx| tx["txhash"] == txhash)) {
 
             // Update the transaction details
-            transaction["tx_status"] = json!("executed");
+            transaction["tx_status"] = json!(status);
             transaction["status_code"] = json!(code);
             transaction["raw_log"] = json!(raw_log);
             transaction["gas_used"] = json!(gas_used);
@@ -230,7 +231,7 @@ pub async fn update_transaction_status(
 // Function to handle timeout scenario
 async fn update_transaction_with_timeout(txhash: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Implement your logic to update the transaction with timeout error here
-    println!("!!! Transaction polling timed out: txhash: {}", txhash);
+    update_transaction_status(txhash, "account_id", "timeout", None, None, None, None).await?;
     Ok(())
 }
 

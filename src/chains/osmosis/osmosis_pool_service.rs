@@ -203,7 +203,6 @@ struct PoolDefaultData {
 }
 #[derive(Deserialize, Debug)]
 struct PoolDefault {
-    total_weight: String,
     pool_params: PoolParams,
     pool_assets: Vec<PoolAsset>,
 }
