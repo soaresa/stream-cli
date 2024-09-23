@@ -1,33 +1,74 @@
 use crate::{constants::get_constants, key_manager::get_account_from_prompt, streamer::Streamer};
-use clap::Parser;
+use clap::{Parser, Subcommand};
 use std::io::{self, Write};
 use crate::chains::osmosis::osmosis_key_service::Signer;
 use num_format::{Locale, ToFormattedString};
 use crate::chains::osmosis::osmosis_account_service::fetch_balances;
 use crate::chains::coin::CoinAmount;
 
-/// start the stream with some constants
+/// Stream CLI - Automate your crypto trading strategy
 #[derive(Parser, Debug)]
 #[command(version, about, long_about = None)]
 pub struct TSCli {
-    /// amount out goal per day
-    #[arg(short, long)]
-    pub daily_amount_out: u64,
-    
-    /// streams per day
-    #[arg(long)]
-    pub daily_streams: u64,
+    #[command(subcommand)]
+    pub command: Commands,
+}
 
-    /// target price
-    #[arg(short, long)]
-    pub min_price: f64,
+#[derive(Subcommand, Debug)]
+pub enum Commands {
+    /// Start the stream with specified parameters
+    Stream {
+        /// Amount out goal per day
+        #[arg(short, long)]
+        daily_amount_out: u64,
+
+        /// Streams per day
+        #[arg(long)]
+        daily_streams: u64,
+
+        /// Target price
+        #[arg(short, long)]
+        min_price: f64,
+    },
+
+    /// Query the balances of an account given an address
+    Balance {
+        /// The account address to query
+        #[arg(short, long)]
+        address: String,
+    },
 }
 
 impl TSCli {
     pub async fn run(&self) {
+        match &self.command {
+            Commands::Stream {
+                daily_amount_out,
+                daily_streams,
+                min_price,
+            } => {
+                // Existing logic for starting the stream
+                self.run_stream(*daily_amount_out, *daily_streams, *min_price)
+                    .await;
+            }
+
+            Commands::Balance { address } => {
+                // New logic for querying balances
+                self.run_balance(address).await;
+            }
+        }
+    }
+
+    // Method to handle the 'stream' subcommand
+    async fn run_stream(
+        &self,
+        daily_amount_out: u64,
+        daily_streams: u64,
+        min_price: f64,
+    ) {
         println!("Starting stream");
 
-        // get mnemonic from user
+        // Get mnemonic from user
         let mnemonic = match get_account_from_prompt("Osmosis") {
             Ok(ret) => ret,
             Err(e) => {
@@ -36,7 +77,7 @@ impl TSCli {
             }
         };
 
-        // create signer
+        // Create signer
         let signer = match Signer::new(&mnemonic) {
             Ok(ret) => ret,
             Err(e) => {
@@ -45,7 +86,7 @@ impl TSCli {
             }
         };
 
-        // fetch balances
+        // Fetch balances
         let balances = match fetch_balances(signer.get_account_address(), None).await {
             Ok(balances) => balances,
             Err(e) => {
@@ -53,14 +94,14 @@ impl TSCli {
                 std::process::exit(0);
             }
         };
-               
-        // confirm address and parameters
+
+        // Confirm address and parameters
         if get_user_confirmation(
             &signer.get_account_address(),
             balances,
-            self.daily_amount_out,
-            self.daily_streams,
-            self.min_price,
+            daily_amount_out,
+            daily_streams,
+            min_price,
         ) {
             println!("Proceeding...");
         } else {
@@ -68,8 +109,30 @@ impl TSCli {
             std::process::exit(0);
         }
 
-        let streamer = Streamer::new(self.daily_amount_out, self.daily_streams, self.min_price);
+        let streamer = Streamer::new(daily_amount_out, daily_streams, min_price);
         streamer.start(&signer).await;
+    }
+
+    // Method to handle the 'balance' subcommand
+    async fn run_balance(&self, address: &String) {
+        // Fetch balances
+        let balances = match fetch_balances(&address, None).await {
+            Ok(balances) => balances,
+            Err(e) => {
+                eprintln!("Error fetching account balances: {:?}", e);
+                std::process::exit(0);
+            }
+        };
+
+        // Display balances
+        println!("Balances for account: {}", address);
+        for balance in balances {
+            println!(
+                "- {} {}",
+                balance.coin,
+                balance.amount.to_formatted_string(&Locale::en)
+            );
+        }
     }
 }
 

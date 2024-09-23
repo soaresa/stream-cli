@@ -26,6 +26,7 @@ Stream CLI is a command-line interface tool designed to automate the execution o
 ## Features
 
 - **Automated Trading**: Schedule and execute crypto trades based on your strategy.
+- **Account Balance Query**: Easily query the balances of an account given its address.
 - **Customizable Parameters**: Define daily amounts, number of trades, and minimum prices.
 - **Randomized Execution Times**: Trades occur at random times within defined windows.
 - **Osmosis Network Integration**: Currently supports the Osmosis blockchain network.
@@ -55,10 +56,17 @@ cargo build
 
 ## Usage
 
-To start the program, execute the appropriate command, replacing the example values with your own parameters:
+Stream CLI provides two main commands:
+
+- **`stream`**: Automate your trading strategy by scheduling trades.
+- **`balance`**: Query the balances of an account given its address.
+
+### **Stream Command**
+
+To start the streaming trades, use the `stream` subcommand with the appropriate options:
 
 ```bash
-cargo run -- --daily-amount-out 20 --daily-streams 4 --min-price 0.1
+cargo run -- stream --daily-amount-out 20 --daily-streams 4 --min-price 0.1
 ```
 
 - `--daily-amount-out`: The total amount of tokens you wish to obtain per day.
@@ -68,6 +76,22 @@ cargo run -- --daily-amount-out 20 --daily-streams 4 --min-price 0.1
 **Example:**
 
 In this setup, the program will execute trades throughout the day to obtain a total of 20 tokens, aiming for a specific amount per trade at a minimum price of 0.1.
+
+### **Balance Command**
+
+To query the balances of an account, use the `balance` subcommand:
+
+```bash
+cargo run -- balance --address <your_account_address>
+```
+
+- `--address`: The account address to query.
+
+**Example:**
+
+```bash
+cargo run -- balance --address osmo1youraddresshere
+```
 
 ### Initial Setup
 
