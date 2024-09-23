@@ -1,7 +1,7 @@
 use crate::poll_service;
 use crate::chains::osmosis::osmosis_key_service::Signer;
 use log::info;
-use tokio::task::LocalSet;
+// use tokio::task::LocalSet;
 
 /// creates a Streamer struct, which will enclose the services
 /// needed to run the trade stream
@@ -20,7 +20,7 @@ pub struct Streamer {
 impl Streamer {
     pub fn new(daily_amount_out: u64, daily_streams: u64, min_price: f64) -> Self {
         Streamer {
-            daily_amount_out: daily_amount_out * 1_000_000, 
+            daily_amount_out: daily_amount_out * 1_000_000,
             daily_streams,
             min_price
         }
@@ -30,7 +30,7 @@ impl Streamer {
         info!("Using account: {}", signer.get_account_address());
 
         // Create a LocalSet to run !Send futures on the current thread
-        let local = LocalSet::new();
+        // let local = LocalSet::new();
 
         // Clone necessary values to move into the async tasks
         let daily_amount_out = self.daily_amount_out;
@@ -40,7 +40,7 @@ impl Streamer {
         // Since we cannot clone `signer`, we need to ensure that it's used within the same scope
 
         // Start the polling service
-        local.run_until(async move {
+        // local.run_until(async move {
             poll_service::start_polling(
                 signer,
                 daily_amount_out,
@@ -48,8 +48,8 @@ impl Streamer {
                 min_price,
             )
             .await;
-        })
-        .await;
+        // })
+        // .await;
 
         // No need to spawn additional tasks that require `signer`
         // Any additional tasks that need `signer` should be run within this scope

@@ -36,7 +36,7 @@ pub async fn start_polling(
 
             // 1.2. Generate a random time between now and the end of the window
             next_trade = generate_next_trade_time(now, end_window_time);
-            println!(">>> Next trade scheduled for {}", next_trade.format("%Y-%m-%d %H:%M:%S"));            
+            println!(">>> Next trade scheduled for {}", next_trade.format("%Y-%m-%d %H:%M:%S"));
         }
 
         // 2. Check if we have already traded in this window
