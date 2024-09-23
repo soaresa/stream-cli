@@ -35,29 +35,26 @@ impl TradeTask {
 
 impl TradeTask {
     pub async fn execute(&self, signer: &Signer) -> bool {
-        println!("### Executing trade task!!!!");
-
         // 1. Check coin price
         let price = match fetch_coin_price(self.pool_id).await {
             Ok(value) => {
                 value
             }
             Err(e) => {
-                error!("!!! Error fetching coin price: {:?}", e);
+                error!("!!! 1. Error fetching coin price: {:?}", e);
                 return false;
             }
         };
-        println!("Coin Price: {}", price);
+        
         if price < self.min_price {
-            println!("!!! Current price {} is less than min price {} to perform swap", price, self.min_price);
+            println!("!!! 1. Current price {} is less than min price {} to perform swap", price, self.min_price);
             return false;
         }
-        println!(">>> 1. Current coin price is above min price");
+        println!(">>> 1. Current coin price {} is above min price {}", price, self.min_price);
 
         // 2. Check account balance
         match fetch_account_balance(signer.get_account_address() , self.token_in).await {
             Ok(balance) => {
-                println!("### Account balance: {} {}", self.token_in, balance.to_formatted_string(&Locale::en));
                 if balance < (self.amount_out as f64 / price) as u64 {
                     eprintln!("!!! 2. Insufficient balance to perform swap");
                     return false;
@@ -85,8 +82,8 @@ impl TradeTask {
         
         // print response
         match ret {
-            Ok(response) => {
-                println!(">>> 3. Swap successful! Response: {}", response);
+            Ok(message) => {
+                println!(">>> 3. {:#?}", &message);
             },
             Err(e) => {
                 eprintln!("!!! 3. Error performing swap: {:?}", e);

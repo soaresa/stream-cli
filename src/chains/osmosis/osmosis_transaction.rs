@@ -12,25 +12,117 @@ use reqwest::Client;
 use crate::configs::get_config_path;
 use crate::chains::coin::Coin;
 use regex::Regex;
+use cosmrs::tx::Tx;
+use prost::Message;
+
 
 #[derive(Serialize, Deserialize, Debug)]
 pub struct BroadcastedTx {
     txhash: String,
     timestamp: String,
+    status_code: Option<u64>,
     pool_id: u64,
     token_in: Coin,
     token_out: Coin,
     amount_out: u64,
     min_price: f64,
     tx_status: String,
-    status_code: Option<String>,
     pool_fee: Option<u64>,
     raw_log: Option<String>,
 }
 
-pub fn store_broadcasted_transaction(
+pub async fn broadcast_tx(
+    tx: Tx, 
+    sender_address: &str, 
+    pool_id: u64, 
+    coin_in: Coin, 
+    coin_out: Coin, 
+    amount_out: u64, 
+    min_price: f64
+) -> Result<String, anyhow::Error> {
+    // Encode the transaction
+    let proto_tx: cosmrs::proto::cosmos::tx::v1beta1::Tx = tx.into();
+    let mut tx_bytes = Vec::new();
+    proto_tx.encode(&mut tx_bytes).map_err(|e| anyhow::anyhow!("Failed to encode Tx: {}", e))?;
+    let tx_base64 = base64::encode(&tx_bytes);
+
+    // Broadcast the transaction
+    let client = Client::new();
+    let broadcast_url = get_osmosis_broadcast_tx_url();
+    let broadcast_body = json!({
+        "tx_bytes": tx_base64,
+        "mode": 2
+    });
+    let response = client.post(broadcast_url)
+        .json(&broadcast_body)
+        .send()
+        .await?;
+
+    // Parse the response JSON
+    let response_json: serde_json::Value = match response.json().await {
+        Ok(json) => json,
+        Err(e) => {
+            eprintln!("Failed to parse response JSON: {}", e);
+            return Err(anyhow::anyhow!("Failed to parse response JSON: {}", e));
+        }
+    };
+    println!(">>> Transaction broadcasted");
+
+    // Store the broadcasted transaction
+    let txhash = response_json["tx_response"]["txhash"].as_str().unwrap();
+    let code = response_json["tx_response"]["code"].as_u64();
+    let raw_log = response_json["tx_response"]["raw_log"].as_str().map(String::from);
+    let _ = store_broadcasted_transaction(
+        sender_address,
+        txhash,
+        code,
+        raw_log,
+        pool_id,
+        coin_in,
+        coin_out,
+        amount_out,
+        min_price,
+    );
+
+    let ret = match code {
+        Some(0) => {           
+            // Poll the transaction status
+            let res = poll_transaction_status(txhash, sender_address).await;
+            match res {
+                Ok(code) => {
+                    match code {
+                        Some(0) => {
+                            "Transaction executed successfully".to_string()
+                        },
+                        Some(err_code) => {
+                            format!("Transaction failed with code: {}", err_code)
+                        },
+                        None => {
+                            "Transaction status unknown".to_string()
+                        }
+                    }
+                },
+                Err(_) => {
+                    "Error polling transaction status".to_string()
+                }
+            }
+        },
+        Some(err_code) => {
+            format!("Broadcast failed with code: {}", err_code)
+        },
+        None => {
+            "Broadcast failed with unknown error".to_string()
+        }
+    };
+
+    Ok(ret)
+}
+
+fn store_broadcasted_transaction(
     account_id: &str,
     txhash: &str,
+    status_code: Option<u64>,
+    raw_log: Option<String>,
     pool_id: u64,
     token_in: Coin,
     token_out: Coin,
@@ -62,15 +154,15 @@ pub fn store_broadcasted_transaction(
     let tx = BroadcastedTx {
         txhash: txhash.to_string(),
         timestamp: SystemTime::now().duration_since(UNIX_EPOCH).expect("Time went backwards").as_secs().to_string(),
+        tx_status: "broadcasted".to_string(),
+        status_code: status_code,
+        raw_log,
         pool_id,
         token_in,
         token_out,
         amount_out,
         min_price,
-        tx_status: "broadcasted".to_string(),
-        status_code: None,
         pool_fee: None,
-        raw_log: None,
     };
 
     // Step 6: Add the new transaction to the account's transaction list
@@ -158,21 +250,17 @@ pub async fn fetch_transaction_details(txhash: &str, account_id: &str) -> Result
     Ok((code, raw_log, gas_used, tokens_in))
 }
 
-
-
-pub async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<(), Box<dyn std::error::Error>> {
-    println!(">>> poll_transaction_status - account: {}, txhash: {}", account_id, txhash);
+async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<Option<u64>, Box<dyn std::error::Error>> {
     let start_time = std::time::SystemTime::now();
     let timeout_duration = Duration::new(60, 0); // 60 seconds
     let poll_interval = Duration::new(3, 0); // 3 seconds
 
     loop {
         let elapsed = start_time.elapsed()?;
-        println!(">>> poll_transaction_status - elapsed time: {:?}", elapsed);
         if elapsed >= timeout_duration {
             update_transaction_with_timeout(txhash).await?;
-            println!("Transaction polling timed out for txhash: {}", txhash);
-            return Ok(());
+            println!("!!! Transaction polling timed out for txhash: {}", txhash);
+            return Ok(None);
         }
 
         // Fetch transaction details
@@ -180,15 +268,15 @@ pub async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<(
             Ok((code, raw_log, gas_used, tokens_in)) => {
                 if code.is_some() {
                     // Transaction was executed
-                    println!("Transaction executed: txhash: {}, tokens_in: {:?}", txhash, tokens_in);
                     update_transaction_status(txhash, account_id, "executed", code, raw_log, gas_used, tokens_in).await?;
-                    return Ok(());
+                    return Ok(code);
                 } else {
-                    println!("Transaction not yet confirmed: txhash: {}, status code: {:?}", txhash, code);
+                    println!("... Transaction not yet confirmed");
                 }
             }
             Err(e) => {
-                println!("Error fetching transaction details: {:?}", e);
+                println!("!!! Error fetching transaction details: {:?}", e);
+                return Ok(None)
             }
         }
 
@@ -199,7 +287,7 @@ pub async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<(
 
 
 // Function to update the transaction status in the JSON file
-pub async fn update_transaction_status(
+async fn update_transaction_status(
     txhash: &str,
     account_id: &str,
     status: &str,
@@ -242,6 +330,10 @@ async fn update_transaction_with_timeout(txhash: &str) -> Result<(), Box<dyn std
     Ok(())
 }
 
-pub fn get_osmosis_tx_details_url() -> String {
-    env::var("OSMOSIS_TX_DETAILS_URL").unwrap_or_else(|_| "https://lcd-osmosis.zone/cosmos/tx/v1beta1/txs/{}".to_string())
+fn get_osmosis_broadcast_tx_url() -> String {
+    env::var("OSMOSIS_BROADCAST_TX_URL").unwrap_or_else(|_| "https://lcd.osmosis.zone/cosmos/tx/v1beta1/txs".to_string())
+}
+
+fn get_osmosis_tx_details_url() -> String {
+    env::var("OSMOSIS_TX_DETAILS_URL").unwrap_or_else(|_| "https://lcd.osmosis.zone/cosmos/tx/v1beta1/txs/{}".to_string())
 }

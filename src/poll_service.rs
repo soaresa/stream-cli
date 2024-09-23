@@ -28,14 +28,13 @@ pub async fn start_polling(
         // 1. Check if we need a new trade window
         let now = Utc::now();
         if end_window_time < now {
-            println!(">>> New block started at {}", now.format("%Y-%m-%d %H:%M:%S"));
             trade_executed = false;
 
             // 1.1. Calculate the end time of the next window
             let window_duration = ChronoDuration::hours(24) / streams_per_day as i32;
             end_window_time = now + window_duration;
 
-            // 1.2. Generate a random time between now and the end of the block
+            // 1.2. Generate a random time between now and the end of the window
             next_trade = generate_next_trade_time(now, end_window_time);
             println!(">>> Next trade scheduled for {}", next_trade.format("%Y-%m-%d %H:%M:%S"));            
         }

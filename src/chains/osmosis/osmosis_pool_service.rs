@@ -5,7 +5,7 @@ use crate::chains::coin::Coin;
 use crate::chains::chain::ChainType;
 use crate::chains::osmosis::osmosis_key_service::Signer;
 use crate::chains::osmosis::osmosis_account_service::fetch_account_info;
-use super::osmosis_transaction::{store_broadcasted_transaction, poll_transaction_status};
+use super::osmosis_transaction::broadcast_tx;
 
 use osmosis_std::types::osmosis::gamm::v1beta1::{MsgSwapExactAmountOut, SwapAmountOutRoute};
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
@@ -20,8 +20,6 @@ use anyhow::Result;
 use prost::Message;
 
 use reqwest::Client;
-use serde_json::json;
-use base64;
 use std::env;
 
 
@@ -45,7 +43,6 @@ pub async fn perform_swap(
     
     // Step 1. Calc max token in amount
     let token_in_max_amount: u64 = (amount_out as f64 / min_price) as u64;
-    println!(">>> Token in max amount: {}", token_in_max_amount);  
 
     // Step 2. Create swap message
     let msg_swap = MsgSwapExactAmountOut {
@@ -97,26 +94,9 @@ pub async fn perform_swap(
 
     // Step 8: Create and broadcast the transaction
     let tx_parsed = Tx::from_bytes(&tx_bytes).map_err(|e| anyhow::anyhow!("Failed to parse transaction bytes: {}", e))?;
-    let response = broadcast_tx(tx_parsed).await?;
-    println!(">>> Transaction broadcasted: {}", response);
+    let ret = broadcast_tx(tx_parsed, sender_address, pool_id, coin_in, coin_out, amount_out, min_price).await?;
 
-    // Step 9: Store the transaction details
-    let response_json: serde_json::Value = serde_json::from_str(&response)?;
-    let txhash = response_json["tx_response"]["txhash"].as_str().unwrap();
-    let _ = store_broadcasted_transaction(
-        sender_address,
-        txhash,
-        pool_id,
-        coin_in,
-        coin_out,
-        amount_out,
-        min_price,
-    );
-
-    // Step 10: Poll the transaction status
-    let _ = poll_transaction_status(txhash, sender_address).await;
-
-    Ok(response)
+    Ok(ret)
 }
 
 #[derive(Deserialize)]
@@ -146,32 +126,6 @@ pub async fn get_current_block_height() -> Result<u64, Box<dyn StdError>> {
 
     let height = res.result.sync_info.latest_block_height.parse::<u64>()?;
     Ok(height)
-}
-
-
-async fn broadcast_tx(tx: Tx) -> Result<String, anyhow::Error> {
-    let proto_tx: cosmrs::proto::cosmos::tx::v1beta1::Tx = tx.into();
-    let mut tx_bytes = Vec::new();
-    proto_tx.encode(&mut tx_bytes).map_err(|e| anyhow::anyhow!("Failed to encode Tx: {}", e))?;
-
-    let tx_base64 = base64::encode(&tx_bytes);
-
-    let client = Client::new();
-    let broadcast_url = get_osmosis_broadcast_tx_url();
-
-    let broadcast_body = json!({
-        "tx_bytes": tx_base64,
-        "mode": 2
-    });
-
-    let response = client.post(broadcast_url)
-        .json(&broadcast_body)
-        .send()
-        .await?;
-
-    let response_text = response.text().await?;
-
-    Ok(response_text)
 }
 
 // Shared data between different Pool types
@@ -235,8 +189,7 @@ pub async fn fetch_coin_price(pool_id: u64) -> Result<f64, Box<dyn StdError>> {
     // Deserialize only the necessary part
     let json_data: PoolCommonData = serde_json::from_str(&raw_json)?;
 
-    println!(">>> Pool ID {}, Type: {}", pool_id, json_data.pool.pool_type);
-
+    // Parse the pool type and get the price
     match json_data.pool.pool_type.as_str() {
         "/osmosis.concentratedliquidity.v1beta1.Pool" => {
             let json_data: PoolCLData = serde_json::from_str(&raw_json)?;
@@ -286,53 +239,10 @@ pub async fn fetch_coin_price(pool_id: u64) -> Result<f64, Box<dyn StdError>> {
     
 }
 
-pub fn get_osmosis_rpc_url() -> String {
+fn get_osmosis_rpc_url() -> String {
     env::var("OSMOSIS_STATUS_URL").unwrap_or_else(|_| "https://rpc.osmosis.zone/status".to_string())
 }
 
-pub fn get_osmosis_broadcast_tx_url() -> String {
-    env::var("OSMOSIS_BROADCAST_TX_URL").unwrap_or_else(|_| "https://lcd-osmosis.zone/cosmos/tx/v1beta1/txs".to_string())
-}
-
-pub fn get_osmosis_pool_price_url() -> String {
+fn get_osmosis_pool_price_url() -> String {
     env::var("OSMOSIS_POOL_PRICE_URL").unwrap_or_else(|_| "https://lcd-osmosis.imperator.co/osmosis/gamm/v1beta1/pools/{}".to_string())
-}
-
-use tokio::time::{sleep, Duration};
-
-async fn fetch_transaction_status(client: &Client, txhash: &str) -> Result<String, Box<dyn StdError>> {
-    // Replace with the actual URL for transaction status retrieval
-    let url = format!("https://example.com/txs/{}", txhash);
-
-    let response = client.get(&url).send().await?.text().await?;
-    Ok(response)
-}
-
-async fn monitor_transaction(client: &Client, txhash: &str) {
-    let polling_interval = Duration::from_secs(5);
-    let timeout_duration = Duration::from_secs(60);
-    let start_time = tokio::time::Instant::now();
-
-    loop {
-        match fetch_transaction_status(client, txhash).await {
-            Ok(status) => {
-                println!("Transaction Status: {}", status);
-                // Check if the transaction is completed (success or failure)
-                if status.contains("completed") || status.contains("failed") {
-                    break;
-                }
-            },
-            Err(e) => {
-                eprintln!("Error fetching transaction status: {}", e);
-                break;
-            }
-        }
-
-        if tokio::time::Instant::now().duration_since(start_time) >= timeout_duration {
-            println!("Timeout: Transaction status check exceeded the maximum duration.");
-            break;
-        }
-
-        sleep(polling_interval).await;
-    }
 }

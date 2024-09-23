@@ -68,6 +68,12 @@ impl TSCli {
     ) {
         println!("Starting stream");
 
+        // Check if the user has provided valid parameters
+        if daily_amount_out <= 0 || daily_streams <= 0 || min_price <= 0.0 {
+            eprintln!("Invalid parameters provided. Please provide valid values for daily_amount_out, daily_streams, and min_price");
+            std::process::exit(0);
+        }
+
         // Get mnemonic from user
         let mnemonic = match get_account_from_prompt("Osmosis") {
             Ok(ret) => ret,
