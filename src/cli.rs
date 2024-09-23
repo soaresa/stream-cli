@@ -3,6 +3,8 @@ use clap::Parser;
 use std::io::{self, Write};
 use crate::chains::osmosis::osmosis_key_service::Signer;
 use num_format::{Locale, ToFormattedString};
+use crate::chains::osmosis::osmosis_account_service::fetch_balances;
+use crate::chains::coin::CoinAmount;
 
 /// start the stream with some constants
 #[derive(Parser, Debug)]
@@ -42,10 +44,20 @@ impl TSCli {
                 std::process::exit(0);
             }
         };
+
+        // fetch balances
+        let balances = match fetch_balances(signer.get_account_address(), None).await {
+            Ok(balances) => balances,
+            Err(e) => {
+                eprintln!("Error fetching account balances: {:?}", e);
+                std::process::exit(0);
+            }
+        };
                
         // confirm address and parameters
         if get_user_confirmation(
             &signer.get_account_address(),
+            balances,
             self.daily_amount_out,
             self.daily_streams,
             self.min_price,
@@ -62,10 +74,13 @@ impl TSCli {
 }
 
 // Function to get user confirmation (y/n)
-fn get_user_confirmation(address: &str, daily_amount_out: u64, daily_streams: u64, min_price: f64) -> bool {
+fn get_user_confirmation(address: &str, balances: Vec<CoinAmount>, daily_amount_out: u64, daily_streams: u64, min_price: f64) -> bool {
     // ask user to confirm the address and params
     println!("Please confirm the following details:");
-    println!(" 1. Address: {}", address);
+    println!(" 1. Account Address: {}", address);
+    for balance in &balances {
+        println!("    - {} {}", balance.coin, balance.amount.to_formatted_string(&Locale::en));
+    }
     println!(" 2. Daily Amount Out: {} {}", get_constants().token_out, daily_amount_out.to_formatted_string(&Locale::en));
     println!(" 3. Daily Streams: {}", daily_streams.to_formatted_string(&Locale::en));
     println!(" 4. Min Price: {} {}", get_constants().token_out, min_price);
@@ -87,7 +102,7 @@ fn get_user_confirmation(address: &str, daily_amount_out: u64, daily_streams: u6
         "n" => false,
         _ => {
             println!("Invalid input, please enter 'y' or 'n'");
-            get_user_confirmation(address, daily_amount_out, daily_streams, min_price) // Recursively ask again on invalid input
+            get_user_confirmation(address, balances, daily_amount_out, daily_streams, min_price) // Recursively ask again on invalid input
         }
     }
 }

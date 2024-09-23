@@ -66,14 +66,14 @@ impl TradeTask {
                     eprintln!("!!! 2. Insufficient balance to perform swap");
                     return false;
                 }
+                println!(">>> 2. Account has enough balance to perform swap: {} {}", self.token_in, balance.to_formatted_string(&Locale::en));
             }
             Err(e) => {
                 error!("!!! 2. Error fetching account balance: {:?}", e);
                 return false;
             }
         }
-        println!(">>> 2. Account has enough balance to perform swap");
-
+        
         // 3. Ensure account has enough balance to pay for fees
         // TODO swamp coins to pay for fees
         
@@ -90,10 +90,10 @@ impl TradeTask {
         // print response
         match ret {
             Ok(response) => {
-            println!(">>> 3. Swap successful! Response: {}", response);
+                println!(">>> 3. Swap successful! Response: {}", response);
             },
             Err(e) => {
-            eprintln!("!!! 3. Error performing swap: {:?}", e);
+                eprintln!("!!! 3. Error performing swap: {:?}", e);
             }
         }
 
