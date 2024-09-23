@@ -1,6 +1,5 @@
-use crate::{poll_service, trade_service};
+use crate::poll_service;
 use crate::chains::osmosis::osmosis_key_service::Signer;
-use std::sync::Arc;
 use log::info;
 use tokio::task::LocalSet;
 

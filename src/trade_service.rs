@@ -1,8 +1,4 @@
-use cosmrs::proto::cosmos::tx::signing;
 use log::error;
-use std::sync::mpsc::{self, Receiver, Sender};
-use std::thread::{self, JoinHandle};
-use cosmrs::crypto::secp256k1::SigningKey;
 use crate::chains::coin::Coin;
 use crate::chains::osmosis::osmosis_pool_service;
 use crate::chains::osmosis::osmosis_key_service::Signer;
