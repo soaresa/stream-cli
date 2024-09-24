@@ -180,7 +180,7 @@ cargo run -- balance --address osmo1youraddresshere
 
 ## Terminating the Program
 
-To stop the program, press `Ctrl + C`.
+To stop the program gracefully, press `Ctrl + C`. This will ensure the program completes its current operations before shutting down, preventing any unexpected interruptions or data loss.
 
 ## Limitations
 

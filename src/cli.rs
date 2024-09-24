@@ -137,6 +137,8 @@ impl TSCli {
 
         let streamer = Streamer::new(amount, swap_type, daily_streams, min_price);
         streamer.start(&signer).await;
+
+        println!("Stream service stopped.");
     }
 
     // Method to handle the 'balance' subcommand

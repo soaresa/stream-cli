@@ -6,6 +6,7 @@ use crate::trade_service::TradeTask;
 use crate::constants::get_constants;
 use num_format::{Locale, ToFormattedString};
 use std::io::{self, Write};
+use tokio::sync::watch;
 
 const POLL_INTERVAL: u64 = 1000; // in milliseconds
 
@@ -23,7 +24,23 @@ pub async fn start_polling(
     let trade_amount: u64 = daily_amount / streams_per_day;
     let constants = get_constants();
 
+    // Use watch channel to signal stop request
+    let (tx, rx) = watch::channel(false);
+
+    // Create a task to listen for Ctrl+C in a separate async block
+    tokio::spawn(async move {
+        tokio::signal::ctrl_c().await.expect("failed to listen for Ctrl+C");
+        println!("\n\nCtrl+C pressed. Stopping the service...\n\n");
+        let _ = tx.send(true); // Set the stop flag
+    });
+    
     loop {
+        // Check for stop request
+        if *rx.borrow() {
+            println!("\n\n<<< Stopping the service gracefully >>>\n");
+            break;
+        }
+
         // Sleep asynchronously
         sleep(Duration::from_millis(POLL_INTERVAL)).await;
 
@@ -77,7 +94,7 @@ pub async fn start_polling(
 
         let diff = next_trade - now;
         let remaining = format!("{:02}:{:02}:{:02}", diff.num_hours(), diff.num_minutes() % 60, diff.num_seconds() % 60);
-        print!("\n\nNext trade starts in: {}", remaining);
+        print!("\rNext trade starts in: {}", remaining);
         io::stdout().flush().unwrap();
     }
 }
