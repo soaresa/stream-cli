@@ -7,7 +7,7 @@ use crate::chains::osmosis::osmosis_key_service::Signer;
 use crate::chains::osmosis::osmosis_account_service::fetch_account_info;
 use super::osmosis_transaction::broadcast_tx;
 
-use osmosis_std::types::osmosis::gamm::v1beta1::{MsgSwapExactAmountOut, SwapAmountOutRoute};
+use osmosis_std::types::osmosis::gamm::v1beta1::{MsgSwapExactAmountOut, SwapAmountOutRoute, MsgSwapExactAmountIn, SwapAmountInRoute};
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 
 use cosmrs::tendermint::{block::Height, chain::Id};
@@ -22,27 +22,9 @@ use prost::Message;
 use reqwest::Client;
 use std::env;
 
-
-fn msg_to_any(msg: MsgSwapExactAmountOut) -> Result<Any, Box<dyn std::error::Error>> {
-    Ok(Any {
-        type_url: "/osmosis.gamm.v1beta1.MsgSwapExactAmountOut".to_string(),
-        value: msg.encode_to_vec(), // This should work if MsgSwapExactAmountOut implements `prost::Message`
-    })
-}
-
-pub async fn perform_swap(
-    signer: &Signer,
-    pool_id: u64,
-    coin_in: Coin,
-    coin_out: Coin,    
-    amount_out: u64,
-    min_price: f64,
-) -> Result<String, anyhow::Error> {
-
-    let sender_address = signer.get_account_address();
-    
+fn create_msg_swap_exact_amount_out(sender_address: &str, pool_id: u64, coin_in: Coin, coin_out: Coin, amount: u64, min_price: f64) -> Result<Any> {
     // Step 1. Calc max token in amount
-    let token_in_max_amount: u64 = (amount_out as f64 / min_price) as u64;
+    let token_in_max_amount: u64 = (amount as f64 / min_price) as u64;
 
     // Step 2. Create swap message
     let msg_swap = MsgSwapExactAmountOut {
@@ -53,11 +35,60 @@ pub async fn perform_swap(
         }],
         token_out: Some(OsmosisCoin {
             denom: coin_out.denom().parse().map_err(|e| anyhow::anyhow!("Failed to parse coin denom: {}", e))?,
-            amount: amount_out.to_string(),
+            amount: amount.to_string(),
         }),
         token_in_max_amount: token_in_max_amount.to_string(),
     };
-    let any_msg = msg_to_any(msg_swap).map_err(|e| anyhow::anyhow!("Failed to convert message to Any: {}", e))?;
+
+    Ok(Any {
+        type_url: "/osmosis.gamm.v1beta1.MsgSwapExactAmountOut".to_string(),
+        value: msg_swap.encode_to_vec(),
+    })
+}
+
+fn create_msg_swap_exact_amount_in(sender_address: &str, pool_id: u64, coin_in: Coin, coin_out: Coin, amount: u64, min_price: f64) -> Result<Any> {
+    // Step 1. Calc min token out amount
+    let token_out_min_amount: u64 = (amount as f64 * min_price) as u64;
+
+    // Step 2. Create swap message
+    let msg_swap = MsgSwapExactAmountIn {
+        sender: sender_address.to_string(),
+        routes: vec![SwapAmountInRoute {
+            pool_id,
+            token_out_denom: coin_out.denom().parse().map_err(|e| anyhow::anyhow!("Failed to parse coin denom: {}", e))?,
+        }],
+        token_in: Some(OsmosisCoin {
+            denom: coin_in.denom().parse().map_err(|e| anyhow::anyhow!("Failed to parse coin denom: {}", e))?,
+            amount: amount.to_string(),
+        }),
+        token_out_min_amount: token_out_min_amount.to_string(),
+    };
+
+    Ok(Any {
+        type_url: "/osmosis.gamm.v1beta1.MsgSwapExactAmountIn".to_string(),
+        value: msg_swap.encode_to_vec(),
+    })
+}
+
+pub async fn perform_swap(
+    signer: &Signer,
+    pool_id: u64,
+    coin_in: Coin,
+    coin_out: Coin,    
+    amount: u64,
+    swap_type: &str,
+    min_price: f64,
+) -> Result<String, anyhow::Error> {
+    
+    // Step 1. Get the sender address
+    let sender_address = signer.get_account_address();
+
+    // Step 2. Create the swap message
+    let msg_swap = match swap_type {
+        "amount_out" => create_msg_swap_exact_amount_out(sender_address, pool_id, coin_in, coin_out, amount, min_price),
+        "amount_in" => create_msg_swap_exact_amount_in(sender_address, pool_id, coin_in, coin_out, amount, min_price),
+        _ => Err(anyhow::anyhow!("Invalid swap type: {}", swap_type)),
+    }?;
 
     // Step 3. Get the current block height
     let current_height = get_current_block_height().await.map_err(|e| anyhow::anyhow!("Failed to get current block height: {}", e))?;
@@ -65,7 +96,7 @@ pub async fn perform_swap(
 
     // Step 4. Create TxBody
     let tx_body = Body {
-        messages: vec![any_msg],
+        messages: vec![msg_swap],
         memo: "Trade Stream".to_string(),
         timeout_height: Height::try_from(timeout_height).unwrap(),
         extension_options: vec![],
@@ -94,7 +125,7 @@ pub async fn perform_swap(
 
     // Step 8: Create and broadcast the transaction
     let tx_parsed = Tx::from_bytes(&tx_bytes).map_err(|e| anyhow::anyhow!("Failed to parse transaction bytes: {}", e))?;
-    let ret = broadcast_tx(tx_parsed, sender_address, pool_id, coin_in, coin_out, amount_out, min_price).await?;
+    let ret = broadcast_tx(tx_parsed, sender_address, pool_id, coin_in, coin_out, amount, swap_type, min_price).await?;
 
     Ok(ret)
 }

@@ -11,7 +11,8 @@ const POLL_INTERVAL: u64 = 1000; // in milliseconds
 
 pub async fn start_polling(
     signer: &Signer,
-    daily_amount_out: u64,
+    daily_amount: u64,
+    swap_type: &'static str,
     streams_per_day: u64,
     min_price: f64,
 ) {
@@ -19,7 +20,7 @@ pub async fn start_polling(
     let mut end_window_time: DateTime<Utc> = Utc::now();
     let mut next_trade: DateTime<Utc> = Utc::now();
     let mut trade_executed = false;
-    let amount_out: u64 = daily_amount_out / streams_per_day;
+    let trade_amount: u64 = daily_amount / streams_per_day;
     let constants = get_constants();
 
     loop {
@@ -57,24 +58,26 @@ pub async fn start_polling(
                 constants.pool_id,
                 constants.token_in.clone(),
                 constants.token_out.clone(),
-                amount_out,
+                trade_amount,
+                swap_type,
                 min_price,
             );
 
             // Execute the task directly
             trade_executed = task.execute(signer).await;
             println!(
-                "$$$ Trade executed {} at {} for amount {}",
+                "$$$ Trade {} executed {} at {} for amount {}",
+                swap_type,
                 trade_executed,
                 now.format("%Y-%m-%d %H:%M:%S"),
-                amount_out.to_formatted_string(&Locale::en)
+                trade_amount.to_formatted_string(&Locale::en)
             );
             continue;
         }
 
         let diff = next_trade - now;
         let remaining = format!("{:02}:{:02}:{:02}", diff.num_hours(), diff.num_minutes() % 60, diff.num_seconds() % 60);
-        print!("\rNext trade starts in: {}", remaining);
+        print!("\n\nNext trade starts in: {}", remaining);
         io::stdout().flush().unwrap();
     }
 }

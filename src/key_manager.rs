@@ -2,7 +2,7 @@ use std::{env, process::exit};
 
 /// Prompts user to type mnemonic securely.
 pub fn get_account_from_prompt(venue_name: &str) -> anyhow::Result<String> {
-    println!("Enter your {} mnemonic:", venue_name);
+    println!("\nEnter your {} mnemonic:", venue_name);
 
     let test_env_mnem = env::var("TSMNEM");
     // if we are in debugging or CI mode

@@ -24,10 +24,10 @@ pub struct BroadcastedTx {
     pool_id: u64,
     token_in: Coin,
     token_out: Coin,
-    amount_out: u64,
+    amount: u64,
+    swap_type: String,
     min_price: f64,
     tx_status: String,
-    pool_fee: Option<u64>,
     raw_log: Option<String>,
 }
 
@@ -37,7 +37,8 @@ pub async fn broadcast_tx(
     pool_id: u64, 
     coin_in: Coin, 
     coin_out: Coin, 
-    amount_out: u64, 
+    amount: u64, 
+    swap_type: &str,
     min_price: f64
 ) -> Result<String, anyhow::Error> {
     // Encode the transaction
@@ -80,7 +81,8 @@ pub async fn broadcast_tx(
         pool_id,
         coin_in,
         coin_out,
-        amount_out,
+        amount,
+        swap_type,
         min_price,
     );
 
@@ -126,7 +128,8 @@ fn store_broadcasted_transaction(
     pool_id: u64,
     token_in: Coin,
     token_out: Coin,
-    amount_out: u64,
+    amount: u64,
+    swap_type: &str,
     min_price: f64
 ) -> Result<(), Box<dyn std::error::Error>> {
     let file_path = get_transactions_file_path()?;
@@ -160,9 +163,9 @@ fn store_broadcasted_transaction(
         pool_id,
         token_in,
         token_out,
-        amount_out,
+        amount,
+        swap_type: swap_type.to_string(),
         min_price,
-        pool_fee: None,
     };
 
     // Step 6: Add the new transaction to the account's transaction list
@@ -199,7 +202,7 @@ fn get_transactions_file_path() -> Result<PathBuf, Error> {
   Ok(app_dir_path.join("osmosis_transactions.json"))
 }
 
-pub async fn fetch_transaction_details(txhash: &str, account_id: &str) -> Result<(Option<u64>, Option<String>, Option<u64>, Option<u64>), Error> {
+pub async fn fetch_transaction_details(txhash: &str, account_id: &str) -> Result<(Option<u64>, Option<String>, Option<u64>, Option<u64>, Option<u64>), Error> {
     let client = Client::new();
     let url = get_osmosis_tx_details_url();
     let url_formated: String = url.replace("{}", txhash); 
@@ -211,9 +214,10 @@ pub async fn fetch_transaction_details(txhash: &str, account_id: &str) -> Result
     let gas_used = json["tx_response"]["gas_used"].as_str()
         .and_then(|s| s.parse::<u64>().ok());
 
-    let tokens_in = if code == Some(0) {
+    let (tokens_in, tokens_out) = if code == Some(0) {
         let events = json["tx_response"]["events"].as_array().unwrap_or(&vec![]).to_vec();
         let mut tokens_in = None;
+        let mut tokens_out = None;
 
         for event in events {
             match event["type"].as_str() {
@@ -236,18 +240,31 @@ pub async fn fetch_transaction_details(txhash: &str, account_id: &str) -> Result
                                     re.find(s).and_then(|m| m.as_str().parse::<u64>().ok())
                                 })
                             });
+
+                        tokens_out = event["attributes"]
+                            .as_array()
+                            .unwrap_or(&vec![])
+                            .iter()
+                            .find(|attr| attr["key"] == "tokens_out")
+                            .and_then(|attr| {
+                                attr["value"].as_str().and_then(|s| {
+                                    // Regular expression to match leading digits
+                                    let re = Regex::new(r"^\d+").unwrap();
+                                    re.find(s).and_then(|m| m.as_str().parse::<u64>().ok())
+                                })
+                            });
                     }
                 },
                 _ => {}
             }
         }        
 
-        tokens_in
+        (tokens_in, tokens_out)
     } else {
-        None
+        (None, None)
     };
 
-    Ok((code, raw_log, gas_used, tokens_in))
+    Ok((code, raw_log, gas_used, tokens_in, tokens_out))
 }
 
 async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<Option<u64>, Box<dyn std::error::Error>> {
@@ -265,10 +282,10 @@ async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<Optio
 
         // Fetch transaction details
         match fetch_transaction_details(txhash, account_id).await {
-            Ok((code, raw_log, gas_used, tokens_in)) => {
+            Ok((code, raw_log, gas_used, tokens_in, tokens_out)) => {
                 if code.is_some() {
                     // Transaction was executed
-                    update_transaction_status(txhash, account_id, "executed", code, raw_log, gas_used, tokens_in).await?;
+                    update_transaction_status(txhash, account_id, "executed", code, raw_log, gas_used, tokens_in, tokens_out).await?;
                     return Ok(code);
                 } else {
                     println!("... Transaction not yet confirmed");
@@ -295,6 +312,7 @@ async fn update_transaction_status(
     raw_log: Option<String>,
     gas_used: Option<u64>,
     tokens_in: Option<u64>,
+    tokens_out: Option<u64>,
 ) -> Result<(), Box<dyn std::error::Error>> {
     let file_path = get_transactions_file_path()?;
     
@@ -313,6 +331,7 @@ async fn update_transaction_status(
             transaction["raw_log"] = json!(raw_log);
             transaction["gas_used"] = json!(gas_used);
             transaction["tokens_in"] = json!(tokens_in);
+            transaction["tokens_out"] = json!(tokens_out);
 
             // Write the updated transactions back to the file
             fs::write(file_path, serde_json::to_string_pretty(&transactions)?)?;
@@ -326,7 +345,7 @@ async fn update_transaction_status(
 // Function to handle timeout scenario
 async fn update_transaction_with_timeout(txhash: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Implement your logic to update the transaction with timeout error here
-    update_transaction_status(txhash, "account_id", "timeout", None, None, None, None).await?;
+    update_transaction_status(txhash, "account_id", "timeout", None, None, None, None, None).await?;
     Ok(())
 }
 

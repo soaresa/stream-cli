@@ -11,7 +11,8 @@ pub struct TradeTask {
     pool_id: u64,
     token_in: Coin,
     token_out: Coin,
-    amount_out: u64,
+    amount: u64,
+    swap_type: &'static str,
     min_price: f64,
 }
 
@@ -20,14 +21,16 @@ impl TradeTask {
         pool_id: u64,
         token_in: Coin,
         token_out: Coin,
-        amount_out: u64,
+        amount: u64,
+        swap_type: &'static str,
         min_price: f64,
     ) -> Self {
         TradeTask {
             pool_id,
             token_in,
             token_out,
-            amount_out,
+            amount,
+            swap_type,
             min_price,
         }
     }
@@ -55,7 +58,16 @@ impl TradeTask {
         // 2. Check account balance
         match fetch_account_balance(signer.get_account_address() , self.token_in).await {
             Ok(balance) => {
-                if balance < (self.amount_out as f64 / price) as u64 {
+                let trade_amount = match self.swap_type {
+                    "amount_out" => (self.amount as f64 / price) as u64,
+                    "amount_in" => (self.amount as f64 * price) as u64,
+                    _ => {
+                        eprintln!("!!! 2. Invalid swap type: {}", self.swap_type);
+                        return false;
+                    }
+                };
+
+                if balance < trade_amount {
                     eprintln!("!!! 2. Insufficient balance to perform swap");
                     return false;
                 }
@@ -76,7 +88,8 @@ impl TradeTask {
             self.pool_id,
             self.token_in,
             self.token_out,
-            self.amount_out,
+            self.amount,
+            self.swap_type,
             self.min_price,
         ).await;
         

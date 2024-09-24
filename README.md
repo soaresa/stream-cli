@@ -73,19 +73,30 @@ Stream CLI provides two main commands:
 
 ### **Stream Command**
 
-To start the streaming trades, use the `stream` subcommand with the appropriate options:
+To start the streaming trades, use the `stream` subcommand with the appropriate options. You can choose to specify either the amount of tokens you want to **obtain** (via `--daily-amount-out`) or the amount of tokens you want to **sell** (via `--daily-amount-in`).
+
+#### Options:
+
+- `--daily-amount-out`: The total amount of tokens you wish to **obtain** per day.
+- `--daily-amount-in`: The total amount of tokens you wish to **sell** per day.
+- `--daily-streams`: The number of trades to be executed over 24 hours.
+- `--min-price`: The minimum price you are willing to pay per token.
+
+#### Examples:
+
+- **Obtain 20 tokens over 4 trades per day** at a minimum price of 0.1 per token:
 
 ```bash
 cargo run -- stream --daily-amount-out 20 --daily-streams 4 --min-price 0.1
 ```
 
-- `--daily-amount-out`: The total amount of tokens you wish to obtain per day.
-- `--daily-streams`: The number of trades to be executed over 24 hours.
-- `--min-price`: The minimum price you are willing to pay per token.
+- **Sell 1000 tokens over 4 trades per day**, with a target minimum price of 0.1 per token:
 
-**Example:**
+```bash
+cargo run -- stream --daily-amount-in 1000 --daily-streams 4 --min-price 0.1
+```
 
-In this setup, the program will execute trades throughout the day to obtain a total of 20 tokens, aiming for a specific amount per trade at a minimum price of 0.1.
+In these examples, the program will either aim to **obtain** 20 tokens throughout the day or **sell** 1000 tokens, executing trades across 4 intervals, depending on which option is provided (`amount-in` or `amount-out`).
 
 ### **Balance Command**
 

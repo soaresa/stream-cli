@@ -18,9 +18,13 @@ pub struct TSCli {
 pub enum Commands {
     /// Start the stream with specified parameters
     Stream {
+        /// Amount in goal per day
+        #[arg(short = 'i', long, required_unless_present = "daily_amount_in")]
+        daily_amount_out: Option<u64>,
+
         /// Amount out goal per day
-        #[arg(short, long)]
-        daily_amount_out: u64,
+        #[arg(short = 'o', long, required_unless_present = "daily_amount_out")]
+        daily_amount_in: Option<u64>,
 
         /// Streams per day
         #[arg(long)]
@@ -44,11 +48,12 @@ impl TSCli {
         match &self.command {
             Commands::Stream {
                 daily_amount_out,
+                daily_amount_in,
                 daily_streams,
                 min_price,
             } => {
                 // Existing logic for starting the stream
-                self.run_stream(*daily_amount_out, *daily_streams, *min_price)
+                self.run_stream(*daily_amount_out, *daily_amount_in, *daily_streams, *min_price)
                     .await;
             }
 
@@ -62,15 +67,29 @@ impl TSCli {
     // Method to handle the 'stream' subcommand
     async fn run_stream(
         &self,
-        daily_amount_out: u64,
+        daily_amount_out: Option<u64>,
+        daily_amount_in: Option<u64>,
         daily_streams: u64,
         min_price: f64,
     ) {
-        println!("Starting stream");
-
         // Check if the user has provided valid parameters
-        if daily_amount_out <= 0 || daily_streams <= 0 || min_price <= 0.0 {
+        if daily_streams <= 0 || min_price <= 0.0 {
             eprintln!("Invalid parameters provided. Please provide valid values for daily_amount_out, daily_streams, and min_price");
+            std::process::exit(0);
+        }
+
+        // Get the daily amount out or in based on the user input
+        let (swap_type, amount) = if let Some(amount_out) = daily_amount_out {
+            ("amount_out", amount_out)
+        } else if let Some(amount_in) = daily_amount_in {
+            ("amount_in", amount_in)
+        } else {
+            unreachable!()
+        };
+
+        // Check if the user has provided a valid amount
+        if amount <= 0 {
+            eprintln!("Invalid amount provided. Please provide a valid value for daily_amount_out or daily_amount_in");
             std::process::exit(0);
         }
 
@@ -106,6 +125,7 @@ impl TSCli {
             &signer.get_account_address(),
             balances,
             daily_amount_out,
+            daily_amount_in,
             daily_streams,
             min_price,
         ) {
@@ -115,7 +135,7 @@ impl TSCli {
             std::process::exit(0);
         }
 
-        let streamer = Streamer::new(daily_amount_out, daily_streams, min_price);
+        let streamer = Streamer::new(amount, swap_type, daily_streams, min_price);
         streamer.start(&signer).await;
     }
 
@@ -143,18 +163,23 @@ impl TSCli {
 }
 
 // Function to get user confirmation (y/n)
-fn get_user_confirmation(address: &str, balances: Vec<CoinAmount>, daily_amount_out: u64, daily_streams: u64, min_price: f64) -> bool {
+fn get_user_confirmation(address: &str, balances: Vec<CoinAmount>, daily_amount_out: Option<u64>, daily_amount_in: Option<u64>, daily_streams: u64, min_price: f64) -> bool {
     // ask user to confirm the address and params
-    println!("Please confirm the following details:");
+    println!("\nPlease confirm the following details for the Trade Stream:");
     println!(" 1. Account Address: {}", address);
     for balance in &balances {
         println!("    - {} {}", balance.coin, balance.amount.to_formatted_string(&Locale::en));
     }
-    println!(" 2. Daily Amount Out: {} {}", get_constants().token_out, daily_amount_out.to_formatted_string(&Locale::en));
+    if let Some(amount_out) = daily_amount_out {
+        println!(" 2. Daily Amount Out: {} {}", get_constants().token_out, amount_out.to_formatted_string(&Locale::en));
+    }
+    if let Some(amount_in) = daily_amount_in {
+        println!(" 2. Daily Amount In: {} {}", get_constants().token_in, amount_in.to_formatted_string(&Locale::en));
+    }
     println!(" 3. Daily Streams: {}", daily_streams.to_formatted_string(&Locale::en));
     println!(" 4. Min Price: {} {}", get_constants().token_out, min_price);
     println!(" 5. Token In: {}", get_constants().token_in);
-    println!(" 6. Pool ID: {}", get_constants().pool_id);
+    println!(" 6. Pool ID: {}\n", get_constants().pool_id);
     
     print!("Do you want to continue? (y/n): ");
     io::stdout().flush().unwrap(); // Ensures the prompt is displayed correctly
@@ -171,7 +196,7 @@ fn get_user_confirmation(address: &str, balances: Vec<CoinAmount>, daily_amount_
         "n" => false,
         _ => {
             println!("Invalid input, please enter 'y' or 'n'");
-            get_user_confirmation(address, balances, daily_amount_out, daily_streams, min_price) // Recursively ask again on invalid input
+            get_user_confirmation(address, balances, daily_amount_out, daily_amount_in, daily_streams, min_price) // Recursively ask again on invalid input
         }
     }
 }
