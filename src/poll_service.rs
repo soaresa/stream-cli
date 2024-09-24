@@ -5,6 +5,7 @@ use crate::chains::osmosis::osmosis_key_service::Signer;
 use crate::trade_service::TradeTask;
 use crate::constants::get_constants;
 use num_format::{Locale, ToFormattedString};
+use std::io::{self, Write};
 
 const POLL_INTERVAL: u64 = 1000; // in milliseconds
 
@@ -28,6 +29,7 @@ pub async fn start_polling(
         // 1. Check if we need a new trade window
         let now = Utc::now();
         if end_window_time < now {
+            println!("");
             trade_executed = false;
 
             // 1.1. Calculate the end time of the next window
@@ -36,16 +38,20 @@ pub async fn start_polling(
 
             // 1.2. Generate a random time between now and the end of the window
             next_trade = generate_next_trade_time(now, end_window_time);
-            println!(">>> Next trade scheduled for {}", next_trade.format("%Y-%m-%d %H:%M:%S"));            
         }
 
         // 2. Check if we have already traded in this window
         if trade_executed {
+            let diff = end_window_time - now;
+            let remaining = format!("{:02}:{:02}:{:02}", diff.num_hours(), diff.num_minutes() % 60, diff.num_seconds() % 60);
+            print!("\rNext window starts in: {}", remaining);
+            io::stdout().flush().unwrap();
             continue;
         }
 
         // 3. Check if it's time to trade
         if next_trade < now {
+            println!("");
             // Create a new trade task
             let task = TradeTask::new(
                 constants.pool_id,
@@ -63,7 +69,13 @@ pub async fn start_polling(
                 now.format("%Y-%m-%d %H:%M:%S"),
                 amount_out.to_formatted_string(&Locale::en)
             );
+            continue;
         }
+
+        let diff = next_trade - now;
+        let remaining = format!("{:02}:{:02}:{:02}", diff.num_hours(), diff.num_minutes() % 60, diff.num_seconds() % 60);
+        print!("\rNext trade starts in: {}", remaining);
+        io::stdout().flush().unwrap();
     }
 }
 
