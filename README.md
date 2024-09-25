@@ -132,8 +132,9 @@ This will display key metrics for each account, grouped by pool ID, token in, an
       "tx_success_count": 12,
       "tx_failed_count": 0,
       "total_tokens_in": "TOSMO 399,996.123456",
-      "total_tokens_out": "TUSDC 366,878.123456",
-      "average_price": "TUSDC 1.092011",
+      "total_tokens_out": "TUSDC 366,887.123456",
+      "average_price": "TUSDC 1.123456",
+      "total_gas_used": "OSMO 1.987654",
       "swap_amount_in_count": 12,
       "swap_amount_out_count": 0
     }
