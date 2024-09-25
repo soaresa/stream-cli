@@ -30,7 +30,7 @@ pub async fn perform_swap(
     amount: u64,
     swap_type: &str,
     min_price: f64,
-) -> Result<String, anyhow::Error> {
+) -> Result<bool, anyhow::Error> {
     
     // Step 1. Get the sender address
     let sender_address = signer.get_account_address();
@@ -77,9 +77,7 @@ pub async fn perform_swap(
 
     // Step 8: Create and broadcast the transaction
     let tx_parsed = Tx::from_bytes(&tx_bytes).map_err(|e| anyhow::anyhow!("Failed to parse transaction bytes: {}", e))?;
-    let ret = broadcast_tx(tx_parsed, sender_address, pool_id, coin_in, coin_out, amount, swap_type, min_price).await?;
-
-    Ok(ret)
+    broadcast_tx(tx_parsed, sender_address, pool_id, coin_in, coin_out, amount, swap_type, min_price).await
 }
 
 fn create_msg_swap_exact_amount_out(sender_address: &str, pool_id: u64, coin_in: Coin, coin_out: Coin, amount: u64, min_price: f64) -> Result<Any> {

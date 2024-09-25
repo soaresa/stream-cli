@@ -6,6 +6,7 @@ use num_format::{Locale, ToFormattedString};
 use crate::chains::osmosis::osmosis_account_service::fetch_balances;
 use crate::chains::osmosis::osmosis_transaction::summarize_transactions;
 use crate::chains::coin::CoinAmount;
+use log::{info, error};
 
 /// Stream CLI - Automate your crypto trading strategy
 #[derive(Parser, Debug)]
@@ -82,7 +83,7 @@ impl TSCli {
     ) {
         // Check if the user has provided valid parameters
         if daily_streams <= 0 || min_price <= 0.0 {
-            eprintln!("Invalid parameters provided. Please provide valid values for daily_amount_out, daily_streams, and min_price");
+            error!("Invalid parameters provided. Please provide valid values for daily_amount_out, daily_streams, and min_price");
             std::process::exit(0);
         }
 
@@ -97,7 +98,7 @@ impl TSCli {
 
         // Check if the user has provided a valid amount
         if amount <= 0 {
-            eprintln!("Invalid amount provided. Please provide a valid value for daily_amount_out or daily_amount_in");
+            error!("Invalid amount provided. Please provide a valid value for daily_amount_out or daily_amount_in");
             std::process::exit(0);
         }
 
@@ -105,7 +106,7 @@ impl TSCli {
         let mnemonic = match get_account_from_prompt("Osmosis") {
             Ok(ret) => ret,
             Err(e) => {
-                eprintln!("Error getting account keys: {:?}", e);
+                error!("Error getting account keys: {:?}", e);
                 std::process::exit(0);
             }
         };
@@ -114,7 +115,7 @@ impl TSCli {
         let signer = match Signer::new(&mnemonic) {
             Ok(ret) => ret,
             Err(e) => {
-                eprintln!("Error creating signer: {:?}", e);
+                error!("Error creating signer: {:?}", e);
                 std::process::exit(0);
             }
         };
@@ -123,7 +124,7 @@ impl TSCli {
         let balances = match fetch_balances(signer.get_account_address(), None).await {
             Ok(balances) => balances,
             Err(e) => {
-                eprintln!("Error fetching account balances: {:?}", e);
+                error!("Error fetching account balances: {:?}", e);
                 std::process::exit(0);
             }
         };
@@ -146,7 +147,7 @@ impl TSCli {
         let streamer = Streamer::new(amount, swap_type, daily_streams, min_price);
         streamer.start(&signer).await;
 
-        println!("Stream service stopped.");
+        info!("Stream service stopped.");
     }
 
     // Method to handle the 'balance' subcommand
@@ -155,7 +156,7 @@ impl TSCli {
         let balances = match fetch_balances(&address, None).await {
             Ok(balances) => balances,
             Err(e) => {
-                eprintln!("Error fetching account balances: {:?}", e);
+                error!("Error fetching account balances: {:?}", e);
                 std::process::exit(0);
             }
         };
@@ -174,7 +175,7 @@ impl TSCli {
                 println!("Transaction Summary:\n{}", serde_json::to_string_pretty(&summary).unwrap());
             }
             Err(e) => {
-                eprintln!("Error summarizing transactions: {:?}", e);
+                error!("Error summarizing transactions: {:?}", e);
             }
         }
     }
@@ -209,7 +210,7 @@ fn get_user_confirmation(address: &str, balances: Vec<CoinAmount>, amount: u64, 
             println!("\n 2. Daily Amount In:  {}", coin_amount);
         },
         _ => {
-            eprintln!("Invalid swap type: {}", swap_type);
+            error!("Invalid swap type: {}", swap_type);
             return false;
         }
     }

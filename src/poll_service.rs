@@ -6,6 +6,7 @@ use crate::trade_service::TradeTask;
 use crate::constants::get_constants;
 use std::io::{self, Write};
 use tokio::sync::watch;
+use log::{info, warn, error};
 
 const POLL_INTERVAL: u64 = 1000; // in milliseconds
 
@@ -16,6 +17,7 @@ pub async fn start_polling(
     streams_per_day: u64,
     min_price: f64,
 ) {
+    info!("Starting the polling service...");
     // Initializations
     let mut end_window_time: DateTime<Utc> = Utc::now();
     let mut next_trade: DateTime<Utc> = Utc::now();
@@ -48,7 +50,12 @@ pub async fn start_polling(
         let now = Utc::now();
         if end_window_time < now {
             if !trade_executed {
-                println!("!!! Trade not executed in the last window. Skipping the next window.");
+                warn!("Trade not executed in the last window. Skipping the next window.");
+            }
+
+            if jump { 
+                println!("");
+                jump = false;
             }
 
             trade_executed = false;
@@ -77,6 +84,7 @@ pub async fn start_polling(
                 println!("");
                 jump = false;
             };
+            println!("Try to execute trade...");
             
             // Create a new trade task
             let task = TradeTask::new(
@@ -89,14 +97,23 @@ pub async fn start_polling(
             );
 
             // Execute the task directly
-            trade_executed = task.execute(signer).await;
-            if trade_executed {
-                println!(
-                    "$$$ Trade {} executed at {}\n",
-                    swap_type,
-                    now.format("%Y-%m-%d %H:%M:%S")
-                );
+            let ret = task.execute(signer).await;
+
+            // print response
+            match ret {
+                Ok(boo) => {
+                    trade_executed = boo;
+                    if boo {
+                        println!("Trade executed with success\n");
+                    } else {
+                        println!("Trade not executed");
+                    }
+                },
+                Err(e) => {
+                    error!("Error executing trade: {:?}", e);
+                }
             }
+            
             continue;
         }
 

@@ -17,6 +17,7 @@ Stream CLI is a command-line interface tool designed to automate the execution o
 - [How It Works](#how-it-works)
 - [Transaction History](#transaction-history)
 - [Terminating the Program](#terminating-the-program)
+- [Logging](#logging)
 - [Limitations](#limitations)
 - [Environments](#environments)
 - [Warnings](#warnings)
@@ -225,6 +226,26 @@ cargo run -- balance --address osmo1youraddresshere
   - **timeout**: No response received within 60 seconds.
 
   A transaction is considered **successfully executed** if the polling service confirms that it was processed by the validators and the `status_code` returned is `0`. In case of an error, a status_code different from zero is provided, and the raw_log is stored with more details about the error.
+
+## Logging
+
+The application supports configurable logging levels to give users more control over the amount of information displayed during execution. You can set the logging level by using the `RUST_LOG` environment variable.
+
+Available log levels:
+
+- `error`: Only shows error messages.
+- `warn`: Shows warning messages and errors.
+- `info`: Displays informational messages, warnings, and errors.
+- `debug`: Provides detailed debugging information along with info, warnings, and errors.
+- `trace`: Displays all logs, including trace-level messages for fine-grained debugging.
+
+To set a log level, you can run the application like this:
+
+```bash
+RUST_LOG=info cargo run -- summary
+```
+
+This example sets the log level to `info`, showing all informational messages during the application's execution.
 
 ## Terminating the Program
 

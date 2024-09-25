@@ -1,6 +1,5 @@
 use crate::poll_service;
 use crate::chains::osmosis::osmosis_key_service::Signer;
-use log::info;
 use tokio::task::LocalSet;
 
 /// creates a Streamer struct, which will enclose the services
@@ -30,8 +29,6 @@ impl Streamer {
     }
 
     pub async fn start(&self, signer: &Signer) {
-        info!("Using account: {}", signer.get_account_address());
-
         // Create a LocalSet to run !Send futures on the current thread
         let local = LocalSet::new();
 
@@ -55,8 +52,5 @@ impl Streamer {
             .await;
         })
         .await;
-
-        // No need to spawn additional tasks that require `signer`
-        // Any additional tasks that need `signer` should be run within this scope
     }
 }

@@ -15,6 +15,7 @@ use regex::Regex;
 use cosmrs::tx::Tx;
 use prost::Message;
 use crate::utils::format_token_amount_with_denom;
+use log::{info, error, warn};
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -41,7 +42,7 @@ pub async fn broadcast_tx(
     amount: u64, 
     swap_type: &str,
     min_price: f64
-) -> Result<String, anyhow::Error> {
+) -> Result<bool, anyhow::Error> {
     // Encode the transaction
     let proto_tx: cosmrs::proto::cosmos::tx::v1beta1::Tx = tx.into();
     let mut tx_bytes = Vec::new();
@@ -64,11 +65,11 @@ pub async fn broadcast_tx(
     let response_json: serde_json::Value = match response.json().await {
         Ok(json) => json,
         Err(e) => {
-            eprintln!("Failed to parse response JSON: {}", e);
+            error!("Failed to parse response JSON: {}", e);
             return Err(anyhow::anyhow!("Failed to parse response JSON: {}", e));
         }
     };
-    println!(">>> Transaction broadcasted");
+    info!(">>> Transaction broadcasted");
 
     // Store the broadcasted transaction
     let txhash = response_json["tx_response"]["txhash"].as_str().unwrap();
@@ -87,7 +88,7 @@ pub async fn broadcast_tx(
         min_price,
     );
 
-    let ret = match code {
+    match code {
         Some(0) => {           
             // Poll the transaction status
             let res = poll_transaction_status(txhash, sender_address).await;
@@ -95,30 +96,31 @@ pub async fn broadcast_tx(
                 Ok(code) => {
                     match code {
                         Some(0) => {
-                            "Transaction executed successfully".to_string()
+                            info!("Transaction executed successfully");
+                            return Ok(true);
                         },
                         Some(err_code) => {
-                            format!("Transaction failed with code: {}", err_code)
+                            error!("Transaction failed with code: {}", err_code);
                         },
                         None => {
-                            "Transaction status unknown".to_string()
+                            error!("Transaction status unknown")
                         }
                     }
                 },
                 Err(_) => {
-                    "Error polling transaction status".to_string()
+                    error!("Error polling transaction status")
                 }
             }
         },
         Some(err_code) => {
-            format!("Broadcast failed with code: {}", err_code)
+            error!("Broadcast failed with code: {}", err_code);
         },
         None => {
-            "Broadcast failed with unknown error".to_string()
+            error!("Broadcast failed with unknown error");
         }
-    };
+    }
 
-    Ok(ret)
+    Ok(false)
 }
 
 fn store_broadcasted_transaction(
@@ -262,7 +264,7 @@ async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<Optio
         let elapsed = start_time.elapsed()?;
         if elapsed >= timeout_duration {
             update_transaction_with_timeout(txhash).await?;
-            println!("!!! Transaction polling timed out for txhash: {}", txhash);
+            warn!("!!! Transaction polling timed out for txhash: {}", txhash);
             return Ok(None);
         }
 
@@ -274,11 +276,11 @@ async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<Optio
                     update_transaction_status(txhash, account_id, "executed", code, raw_log, gas_used, tokens_in, tokens_out).await?;
                     return Ok(code);
                 } else {
-                    println!("... Transaction not yet confirmed");
+                    info!("... Transaction not yet confirmed");
                 }
             }
             Err(e) => {
-                println!("!!! Error fetching transaction details: {:?}", e);
+                error!("!!! Error fetching transaction details: {:?}", e);
                 return Ok(None)
             }
         }
