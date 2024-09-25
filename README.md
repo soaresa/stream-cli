@@ -219,9 +219,10 @@ cargo run -- balance --address osmo1youraddresshere
 - **Transaction Statuses:**
 
   - **broadcasted**: Transaction has been sent.
-  - **executed**: Transaction was successful (`code` is 0).
-  - **error**: Transaction failed (`code` is non-zero).
+  - **executed**: Transaction was executed by validators.
   - **timeout**: No response received within 60 seconds.
+
+  A transaction is considered **successfully executed** if the polling service confirms that it was processed by the validators and the `status_code` returned is `0`. In case of an error, a status_code different from zero is provided, and the raw_log is stored with more details about the error.
 
 ## Terminating the Program
 
