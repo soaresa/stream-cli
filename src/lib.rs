@@ -1,4 +1,5 @@
 pub mod cli;
+pub mod utils;
 pub mod chains;
 pub mod streamer;
 pub mod constants;

@@ -4,6 +4,7 @@ use std::io::{self, Write};
 use crate::chains::osmosis::osmosis_key_service::Signer;
 use num_format::{Locale, ToFormattedString};
 use crate::chains::osmosis::osmosis_account_service::fetch_balances;
+use crate::chains::osmosis::osmosis_transaction::summarize_transactions;
 use crate::chains::coin::CoinAmount;
 
 /// Stream CLI - Automate your crypto trading strategy
@@ -41,6 +42,9 @@ pub enum Commands {
         #[arg(short, long)]
         address: String,
     },
+
+    /// Summarize all transactions for all accounts
+    Summary,
 }
 
 impl TSCli {
@@ -60,6 +64,10 @@ impl TSCli {
             Commands::Balance { address } => {
                 // New logic for querying balances
                 self.run_balance(address).await;
+            }
+
+            Commands::Summary => {
+                self.run_summary().await;
             }
         }
     }
@@ -153,13 +161,21 @@ impl TSCli {
         };
 
         // Display balances
-        println!("Balances for account: {}", address);
+        println!("\nBalances for account: {}", address);
         for balance in balances {
-            println!(
-                "- {} {}",
-                balance.coin,
-                balance.amount.to_formatted_string(&Locale::en)
-            );
+            println!("  {}", balance);
+        }
+    }
+
+    // Method to handle the 'summary' subcommand
+    async fn run_summary(&self) {
+        match summarize_transactions() {
+            Ok(summary) => {
+                println!("Transaction Summary:\n{}", serde_json::to_string_pretty(&summary).unwrap());
+            }
+            Err(e) => {
+                eprintln!("Error summarizing transactions: {:?}", e);
+            }
         }
     }
 }

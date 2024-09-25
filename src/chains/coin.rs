@@ -1,5 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
+use crate::utils::format_token_amount_with_denom;
 
 // Enum for coins with associated denoms
 #[derive(Serialize, Deserialize, Clone, Debug, Copy, PartialEq, Eq )]
@@ -46,10 +47,9 @@ pub struct CoinAmount {
     pub amount: u64,
 }
 
-impl CoinAmount {
-    // Method to display the balance with its denomination
-    pub fn display_balance(&self) -> String {
-        format!("{}: {}", self.coin.denom(), self.amount)
+impl fmt::Display for CoinAmount {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        let ret = format_token_amount_with_denom(self.amount, &self.coin.to_string());
+        write!(f, "{}", ret)
     }
 }
-

@@ -69,6 +69,7 @@ cargo build
 Stream CLI provides two main commands:
 
 - **`stream`**: Automate your trading strategy by scheduling trades.
+- **`summary`**: Generate a summary report of all stream transactions.
 - **`balance`**: Query the balances of an account given its address.
 
 ### **Stream Command**
@@ -97,6 +98,47 @@ cargo run -- stream --daily-amount-in 1000 --daily-streams 4 --min-price 0.1
 ```
 
 In these examples, the program will either aim to **obtain** 20 tokens throughout the day or **sell** 1000 tokens, executing trades across 4 intervals, depending on which option is provided (`amount-in` or `amount-out`).
+
+### **Summary Command**
+
+To view a summary of all transactions across accounts, use the `summary` subcommand:
+
+```bash
+cargo run -- summary
+```
+
+This will display key metrics for each account, grouped by pool ID, token in, and token out.
+
+**This summary includes:**
+
+- **Pool ID**: The ID of the liquidity pool.
+- **Token In/Out**: The tokens involved in the swap.
+- **Transaction Counts**: Total, successful, and failed transactions.
+- **Total Tokens In/Out**: Aggregated amounts of tokens exchanged.
+- **Average Price**: The average swap price over successful transactions.
+- **Swap Type Counts**: Number of `amount_in` and `amount_out` swaps.
+
+**Example:**
+
+```bash
+{
+  "osmoyouraddresshere": {
+    "15-TOSMO-TUSDC": {
+      "pool_id": 15,
+      "token_in": "TOSMO",
+      "token_out": "TUSDC",
+      "tx_total_count": 12,
+      "tx_success_count": 12,
+      "tx_failed_count": 0,
+      "total_tokens_in": "TOSMO 399,996.123456",
+      "total_tokens_out": "TUSDC 366,878.123456",
+      "average_price": "TUSDC 1.092011",
+      "swap_amount_in_count": 12,
+      "swap_amount_out_count": 0
+    }
+  }
+}
+```
 
 ### **Balance Command**
 
@@ -163,13 +205,15 @@ cargo run -- balance --address osmo1youraddresshere
   - `pool_id`
   - `token_in`
   - `token_out`
-  - `amount_out`
+  - `amount`
+  - `swap_type`
   - `min_price`
   - `tx_status` (broadcasted, executed, error, timeout)
   - `status_code`
   - `raw_log`
   - `gas_used`
   - `tokens_in`
+  - `tokens_out`
 
 - **Transaction Statuses:**
 

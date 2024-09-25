@@ -14,6 +14,7 @@ use crate::chains::coin::Coin;
 use regex::Regex;
 use cosmrs::tx::Tx;
 use prost::Message;
+use crate::utils::format_token_amount_with_denom;
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -341,13 +342,103 @@ async fn update_transaction_status(
     Ok(())
 }
 
-
 // Function to handle timeout scenario
 async fn update_transaction_with_timeout(txhash: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Implement your logic to update the transaction with timeout error here
     update_transaction_status(txhash, "account_id", "timeout", None, None, None, None, None).await?;
     Ok(())
 }
+
+pub fn summarize_transactions() -> Result<Value, Box<dyn std::error::Error>> {
+    let file_path = get_transactions_file_path()?;
+    let file_content = fs::read_to_string(&file_path)?;
+    let transactions: Value = serde_json::from_str(&file_content)?;
+
+    let mut summary = serde_json::Map::new();
+
+    // Iterate through each account
+    if let Some(account_map) = transactions.as_object() {
+        for (account_id, tx_list) in account_map {
+            let mut pool_summaries: serde_json::Map<String, Value> = serde_json::Map::new();
+
+            if let Some(transactions) = tx_list.as_array() {
+                for tx in transactions {
+                    let pool_id = tx["pool_id"].as_u64().unwrap_or(0);
+                    let token_in = tx["token_in"].as_str().unwrap_or("unknown");
+                    let token_out = tx["token_out"].as_str().unwrap_or("unknown");
+                    let status_code = tx["status_code"].as_u64().unwrap_or(0);
+                    let tokens_in = tx["tokens_in"].as_u64().unwrap_or(0);
+                    let tokens_out = tx["tokens_out"].as_u64().unwrap_or(0);
+                    let swap_type = tx["swap_type"].as_str().unwrap_or("unknown");
+
+                    // Create a unique key for each combination of pool_id, token_in, and token_out
+                    let pool_key = format!("{}-{}-{}", pool_id, token_in, token_out);
+
+                    // Initialize the summary for this pool if it doesn't exist
+                    let pool_summary = pool_summaries.entry(pool_key.clone())
+                        .or_insert_with(|| json!({
+                            "pool_id": pool_id,
+                            "token_in": token_in,
+                            "token_out": token_out,
+                            "tx_total_count": 0,
+                            "tx_success_count": 0,
+                            "tx_failed_count": 0,
+                            "total_tokens_in": 0,
+                            "total_tokens_out": 0,
+                            "total_price": 0.0,
+                            "swap_amount_in_count": 0,
+                            "swap_amount_out_count": 0,                            
+                        }));
+
+                    // Update the counts and totals based on transaction status and type
+                    if let Some(pool_summary_obj) = pool_summary.as_object_mut() {
+                        match swap_type {
+                            "amount_in" => *pool_summary_obj.get_mut("swap_amount_in_count").unwrap() = json!(pool_summary_obj["swap_amount_in_count"].as_u64().unwrap() + 1),
+                            "amount_out" => *pool_summary_obj.get_mut("swap_amount_out_count").unwrap() = json!(pool_summary_obj["swap_amount_out_count"].as_u64().unwrap() + 1),
+                            _ => {}
+                        }
+
+                        match status_code {
+                            0 => {
+                                let price = tokens_in as f64 / tokens_out as f64;
+                                *pool_summary_obj.get_mut("tx_total_count").unwrap() = json!(pool_summary_obj["tx_total_count"].as_u64().unwrap() + 1);
+                                *pool_summary_obj.get_mut("tx_success_count").unwrap() = json!(pool_summary_obj["tx_success_count"].as_u64().unwrap() + 1);
+                                *pool_summary_obj.get_mut("total_tokens_in").unwrap() = json!(pool_summary_obj["total_tokens_in"].as_u64().unwrap() + tokens_in);
+                                *pool_summary_obj.get_mut("total_tokens_out").unwrap() = json!(pool_summary_obj["total_tokens_out"].as_u64().unwrap() + tokens_out);
+                                *pool_summary_obj.get_mut("total_price").unwrap() = json!(pool_summary_obj["total_price"].as_f64().unwrap() + price);
+                            },
+                            _ => *pool_summary_obj.get_mut("tx_failed_count").unwrap() = json!(pool_summary_obj["tx_failed_count"].as_u64().unwrap() + 1),
+                        }
+                    }
+                }
+            }
+
+            // Calculate final statistics for each pool
+            for (_, pool_summary) in pool_summaries.iter_mut() {
+                if let Some(pool_summary_obj) = pool_summary.as_object_mut() {
+                    let executed_transactions = pool_summary_obj["tx_total_count"].as_u64().unwrap_or(0);
+                    let total_price = pool_summary_obj["total_price"].as_f64().unwrap_or(0.0);
+                    let average_price = if executed_transactions > 0 {
+                        total_price / executed_transactions as f64
+                    } else {
+                        0.0
+                    };
+
+                    pool_summary_obj.insert("average_price".to_string(), json!(format_token_amount_with_denom((average_price * 1_000_000f64) as u64, pool_summary_obj["token_out"].as_str().unwrap_or("unknown"))));
+                    pool_summary_obj.insert("total_tokens_in".to_string(), json!(format_token_amount_with_denom(pool_summary_obj["total_tokens_in"].as_u64().unwrap_or(0), pool_summary_obj["token_in"].as_str().unwrap_or("unknown"))));
+                    pool_summary_obj.insert("total_tokens_out".to_string(), json!(format_token_amount_with_denom(pool_summary_obj["total_tokens_out"].as_u64().unwrap_or(0), pool_summary_obj["token_out"].as_str().unwrap_or("unknown"))));
+                    pool_summary_obj.remove("total_price");
+                }
+            }
+
+            summary.insert(account_id.clone(), Value::Object(pool_summaries));
+        }
+    }
+
+    Ok(Value::Object(summary))
+}
+
+
 
 fn get_osmosis_broadcast_tx_url() -> String {
     env::var("OSMOSIS_BROADCAST_TX_URL").unwrap_or_else(|_| "https://lcd.osmosis.zone/cosmos/tx/v1beta1/txs".to_string())

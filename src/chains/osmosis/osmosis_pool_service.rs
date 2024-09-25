@@ -22,54 +22,6 @@ use prost::Message;
 use reqwest::Client;
 use std::env;
 
-fn create_msg_swap_exact_amount_out(sender_address: &str, pool_id: u64, coin_in: Coin, coin_out: Coin, amount: u64, min_price: f64) -> Result<Any> {
-    // Step 1. Calc max token in amount
-    let token_in_max_amount: u64 = (amount as f64 / min_price) as u64;
-
-    // Step 2. Create swap message
-    let msg_swap = MsgSwapExactAmountOut {
-        sender: sender_address.to_string(),
-        routes: vec![SwapAmountOutRoute {
-            pool_id,
-            token_in_denom: coin_in.denom().parse().map_err(|e| anyhow::anyhow!("Failed to parse coin denom: {}", e))?,
-        }],
-        token_out: Some(OsmosisCoin {
-            denom: coin_out.denom().parse().map_err(|e| anyhow::anyhow!("Failed to parse coin denom: {}", e))?,
-            amount: amount.to_string(),
-        }),
-        token_in_max_amount: token_in_max_amount.to_string(),
-    };
-
-    Ok(Any {
-        type_url: "/osmosis.gamm.v1beta1.MsgSwapExactAmountOut".to_string(),
-        value: msg_swap.encode_to_vec(),
-    })
-}
-
-fn create_msg_swap_exact_amount_in(sender_address: &str, pool_id: u64, coin_in: Coin, coin_out: Coin, amount: u64, min_price: f64) -> Result<Any> {
-    // Step 1. Calc min token out amount
-    let token_out_min_amount: u64 = (amount as f64 * min_price) as u64;
-
-    // Step 2. Create swap message
-    let msg_swap = MsgSwapExactAmountIn {
-        sender: sender_address.to_string(),
-        routes: vec![SwapAmountInRoute {
-            pool_id,
-            token_out_denom: coin_out.denom().parse().map_err(|e| anyhow::anyhow!("Failed to parse coin denom: {}", e))?,
-        }],
-        token_in: Some(OsmosisCoin {
-            denom: coin_in.denom().parse().map_err(|e| anyhow::anyhow!("Failed to parse coin denom: {}", e))?,
-            amount: amount.to_string(),
-        }),
-        token_out_min_amount: token_out_min_amount.to_string(),
-    };
-
-    Ok(Any {
-        type_url: "/osmosis.gamm.v1beta1.MsgSwapExactAmountIn".to_string(),
-        value: msg_swap.encode_to_vec(),
-    })
-}
-
 pub async fn perform_swap(
     signer: &Signer,
     pool_id: u64,
@@ -128,6 +80,54 @@ pub async fn perform_swap(
     let ret = broadcast_tx(tx_parsed, sender_address, pool_id, coin_in, coin_out, amount, swap_type, min_price).await?;
 
     Ok(ret)
+}
+
+fn create_msg_swap_exact_amount_out(sender_address: &str, pool_id: u64, coin_in: Coin, coin_out: Coin, amount: u64, min_price: f64) -> Result<Any> {
+    // Step 1. Calc max token in amount
+    let token_in_max_amount: u64 = (amount as f64 / min_price) as u64;
+
+    // Step 2. Create swap message
+    let msg_swap = MsgSwapExactAmountOut {
+        sender: sender_address.to_string(),
+        routes: vec![SwapAmountOutRoute {
+            pool_id,
+            token_in_denom: coin_in.denom().parse().map_err(|e| anyhow::anyhow!("Failed to parse coin denom: {}", e))?,
+        }],
+        token_out: Some(OsmosisCoin {
+            denom: coin_out.denom().parse().map_err(|e| anyhow::anyhow!("Failed to parse coin denom: {}", e))?,
+            amount: amount.to_string(),
+        }),
+        token_in_max_amount: token_in_max_amount.to_string(),
+    };
+
+    Ok(Any {
+        type_url: "/osmosis.gamm.v1beta1.MsgSwapExactAmountOut".to_string(),
+        value: msg_swap.encode_to_vec(),
+    })
+}
+
+fn create_msg_swap_exact_amount_in(sender_address: &str, pool_id: u64, coin_in: Coin, coin_out: Coin, amount: u64, min_price: f64) -> Result<Any> {
+    // Step 1. Calc min token out amount
+    let token_out_min_amount: u64 = (amount as f64 * min_price) as u64;
+
+    // Step 2. Create swap message
+    let msg_swap = MsgSwapExactAmountIn {
+        sender: sender_address.to_string(),
+        routes: vec![SwapAmountInRoute {
+            pool_id,
+            token_out_denom: coin_out.denom().parse().map_err(|e| anyhow::anyhow!("Failed to parse coin denom: {}", e))?,
+        }],
+        token_in: Some(OsmosisCoin {
+            denom: coin_in.denom().parse().map_err(|e| anyhow::anyhow!("Failed to parse coin denom: {}", e))?,
+            amount: amount.to_string(),
+        }),
+        token_out_min_amount: token_out_min_amount.to_string(),
+    };
+
+    Ok(Any {
+        type_url: "/osmosis.gamm.v1beta1.MsgSwapExactAmountIn".to_string(),
+        value: msg_swap.encode_to_vec(),
+    })
 }
 
 #[derive(Deserialize)]

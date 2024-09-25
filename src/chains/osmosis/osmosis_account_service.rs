@@ -5,6 +5,7 @@ use reqwest;
 use crate::chains::coin::{Coin, CoinAmount};
 use reqwest::Client;
 use cosmrs::tx::SequenceNumber;
+use crate::utils::format_token_amount_with_denom;
 
 #[derive(Deserialize)]
 struct Balance {
