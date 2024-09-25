@@ -26,6 +26,7 @@ Stream CLI is a command-line interface tool designed to automate the execution o
 ## Features
 
 - **Automated Trading**: Schedule and execute crypto trades based on your strategy.
+- **Trading Summary**: Get detailed reports on stream transactions history.
 - **Account Balance Query**: Easily query the balances of an account given its address.
 - **Customizable Parameters**: Define daily amounts, number of trades, and minimum prices.
 - **Randomized Execution Times**: Trades occur at random times within defined windows.
@@ -66,7 +67,7 @@ cargo build
 
 ## Usage
 
-Stream CLI provides two main commands:
+Stream CLI provides three main commands:
 
 - **`stream`**: Automate your trading strategy by scheduling trades.
 - **`summary`**: Generate a summary report of all stream transactions.
@@ -118,7 +119,7 @@ This will display key metrics for each account, grouped by pool ID, token in, an
 - **Average Price**: The average swap price over successful transactions.
 - **Swap Type Counts**: Number of `amount_in` and `amount_out` swaps.
 
-**Example:**
+**Example of Output:**
 
 ```bash
 {
