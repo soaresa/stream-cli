@@ -1,7 +1,6 @@
 use std::fmt::Debug;
 use std::fs;
 use std::env;
-use std::io::Read;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::thread;
@@ -177,21 +176,6 @@ fn store_broadcasted_transaction(
     fs::write(file_path, serde_json::to_string(&transactions)?)?;
 
     Ok(())
-}
-
-fn get_transactions(account_id: &str) -> Result<Option<serde_json::Value>, Box<dyn std::error::Error>> {
-  let file_path = get_transactions_file_path()?;
-  let mut file_content = String::new();
-  let mut file = fs::File::open(file_path.clone()).unwrap_or_else(|_| fs::File::create(file_path).unwrap());
-  file.read_to_string(&mut file_content)?;
-
-  let mut transactions: serde_json::Value = serde_json::from_str(&file_content)?;
-
-  let account_transactions = transactions.as_object_mut()
-      .and_then(|map| map.get_mut(account_id))
-      .map(|v| v.take());
-
-  Ok(account_transactions)
 }
 
 // Function to get the path to the wallets file

@@ -4,7 +4,6 @@ use crate::chains::osmosis::osmosis_pool_service;
 use crate::chains::osmosis::osmosis_key_service::Signer;
 use crate::chains::osmosis::osmosis_pool_service::fetch_coin_price;
 use crate::chains::osmosis::osmosis_account_service::fetch_account_balance;
-use num_format::{Locale, ToFormattedString};
 
 /// the trade tasks that the stream processes
 pub struct TradeTask {

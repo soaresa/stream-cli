@@ -4,7 +4,6 @@ use rand::Rng;
 use crate::chains::osmosis::osmosis_key_service::Signer;
 use crate::trade_service::TradeTask;
 use crate::constants::get_constants;
-use num_format::{Locale, ToFormattedString};
 use std::io::{self, Write};
 use tokio::sync::watch;
 
@@ -20,9 +19,10 @@ pub async fn start_polling(
     // Initializations
     let mut end_window_time: DateTime<Utc> = Utc::now();
     let mut next_trade: DateTime<Utc> = Utc::now();
-    let mut trade_executed = false;
+    let mut trade_executed = true;
     let trade_amount: u64 = daily_amount / streams_per_day;
     let constants = get_constants();
+    let mut jump = false;
 
     // Use watch channel to signal stop request
     let (tx, rx) = watch::channel(false);
@@ -47,6 +47,10 @@ pub async fn start_polling(
         // 1. Check if we need a new trade window
         let now = Utc::now();
         if end_window_time < now {
+            if !trade_executed {
+                println!("!!! Trade not executed in the last window. Skipping the next window.");
+            }
+
             trade_executed = false;
 
             // 1.1. Calculate the end time of the next window
@@ -63,12 +67,17 @@ pub async fn start_polling(
             let remaining = format!("{:02}:{:02}:{:02}", diff.num_hours(), diff.num_minutes() % 60, diff.num_seconds() % 60);
             print!("\rNext window starts in: {}", remaining);
             io::stdout().flush().unwrap();
+            jump = true;
             continue;
         }
 
         // 3. Check if it's time to trade
         if next_trade < now {
-            println!("");
+            if jump { 
+                println!("");
+                jump = false;
+            };
+            
             // Create a new trade task
             let task = TradeTask::new(
                 constants.pool_id,
@@ -81,18 +90,20 @@ pub async fn start_polling(
 
             // Execute the task directly
             trade_executed = task.execute(signer).await;
-            println!(
-                "$$$ Trade {} executed {} at {}\n",
-                swap_type,
-                trade_executed,
-                now.format("%Y-%m-%d %H:%M:%S")
-            );
+            if trade_executed {
+                println!(
+                    "$$$ Trade {} executed at {}\n",
+                    swap_type,
+                    now.format("%Y-%m-%d %H:%M:%S")
+                );
+            }
             continue;
         }
 
         let diff = next_trade - now;
         let remaining = format!("{:02}:{:02}:{:02}", diff.num_hours(), diff.num_minutes() % 60, diff.num_seconds() % 60);
         print!("\rNext trade starts in: {}", remaining);
+        jump = true;
         io::stdout().flush().unwrap();
     }
 }
@@ -102,8 +113,9 @@ fn generate_next_trade_time(now: DateTime<Utc>, end_window_time: DateTime<Utc>) 
     let end_timestamp = end_window_time.timestamp();
     let mut rng = rand::thread_rng();
     let random_timestamp = rng.gen_range(now_timestamp..end_timestamp);
-    DateTime::<Utc>::from_utc(
-        chrono::NaiveDateTime::from_timestamp(random_timestamp, 0),
-        Utc,
-    )
+
+    // Use DateTime::from_timestamp to create the DateTime directly
+    DateTime::<Utc>::from_timestamp(random_timestamp, 0).unwrap()
 }
+
+

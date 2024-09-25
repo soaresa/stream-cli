@@ -202,7 +202,7 @@ struct PoolAsset {
 }
 #[derive(Deserialize, Debug)]
 struct Token {
-    denom: String,
+    //denom: String,
     amount: String
 }
 
