@@ -137,9 +137,9 @@ impl TSCli {
             daily_streams,
             min_price,
         ) {
-            println!("Proceeding...");
+            println!("Proceeding...\n");
         } else {
-            println!("Exiting...");
+            println!("Exiting...\n");
             std::process::exit(0);
         }
 
@@ -182,36 +182,44 @@ impl TSCli {
 
 // Function to get user confirmation (y/n)
 fn get_user_confirmation(address: &str, balances: Vec<CoinAmount>, amount: u64, swap_type: &str, daily_streams: u64, min_price: f64) -> bool {   
-    // ask user to confirm the address and params
+    // Ask user to confirm the address and params
     println!("\nPlease confirm the following details for the Trade Stream:");
     println!(" 1. Account Address: {}", address);
+
+    // Display account balances
+    println!("\n    Account Balances:");
     for balance in &balances {
-        println!("    - {} {}", balance.coin, balance.amount.to_formatted_string(&Locale::en));
+        println!("    - {}", balance);
     }
+
+    // Display daily amount based on swap type
     match swap_type {
         "amount_out" => {
             let coin_amount = CoinAmount {
                 coin: get_constants().token_out,
                 amount: amount,
             };
-            println!(" 2. Daily Amount Out: {}", coin_amount);
+            println!("\n 2. Daily Amount Out: {}", coin_amount);
         },
         "amount_in" => {
             let coin_amount = CoinAmount {
                 coin: get_constants().token_out,
                 amount: amount,
             };
-            println!(" 2. Daily Amount In: {}", coin_amount);
+            println!("\n 2. Daily Amount In:  {}", coin_amount);
         },
         _ => {
             eprintln!("Invalid swap type: {}", swap_type);
             return false;
         }
     }
-    println!(" 3. Daily Streams: {}", daily_streams.to_formatted_string(&Locale::en));
-    println!(" 4. Min Price: {} {}", get_constants().token_out, min_price);
-    println!(" 5. Token In: {}", get_constants().token_in);
-    println!(" 6. Pool ID: {}\n", get_constants().pool_id);
+
+    // Print additional details
+    println!(" 3. Daily Streams:    {}", daily_streams.to_formatted_string(&Locale::en));
+    println!(" 4. Min Price:        {} {}", get_constants().token_out, min_price);
+    println!(" 5. Token In:         {}", get_constants().token_in);
+    println!(" 6. Token Out:        {}", get_constants().token_out);
+    println!(" 7. Pool ID:          {}\n", get_constants().pool_id);
     
     print!("Do you want to continue? (y/n): ");
     io::stdout().flush().unwrap(); // Ensures the prompt is displayed correctly

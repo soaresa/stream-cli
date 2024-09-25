@@ -53,7 +53,7 @@ impl TradeTask {
             println!("!!! 1. Current price {} is less than min price {} to perform swap", price, self.min_price);
             return false;
         }
-        println!(">>> 1. Current coin price {} is above min price {}", price, self.min_price);
+        println!(">>> 1. Current price {} is above min price {}", price, self.min_price);
 
         // 2. Check account balance
         match fetch_account_balance(signer.get_account_address() , self.token_in).await {
@@ -71,7 +71,7 @@ impl TradeTask {
                     eprintln!("!!! 2. Insufficient balance to perform swap");
                     return false;
                 }
-                println!(">>> 2. Account has enough balance to perform swap: {} {}", self.token_in, balance.to_formatted_string(&Locale::en));
+                println!(">>> 2. Account has enough balance to perform swap");
             }
             Err(e) => {
                 error!("!!! 2. Error fetching account balance: {:?}", e);

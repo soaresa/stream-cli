@@ -47,7 +47,6 @@ pub async fn start_polling(
         // 1. Check if we need a new trade window
         let now = Utc::now();
         if end_window_time < now {
-            println!("");
             trade_executed = false;
 
             // 1.1. Calculate the end time of the next window
@@ -83,11 +82,10 @@ pub async fn start_polling(
             // Execute the task directly
             trade_executed = task.execute(signer).await;
             println!(
-                "$$$ Trade {} executed {} at {} for amount {}",
+                "$$$ Trade {} executed {} at {}\n",
                 swap_type,
                 trade_executed,
-                now.format("%Y-%m-%d %H:%M:%S"),
-                trade_amount.to_formatted_string(&Locale::en)
+                now.format("%Y-%m-%d %H:%M:%S")
             );
             continue;
         }
