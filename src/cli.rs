@@ -21,11 +21,11 @@ pub enum Commands {
     Stream {
         /// Amount in goal per day
         #[arg(short = 'i', long, required_unless_present = "daily_amount_in")]
-        daily_amount_out: Option<u64>,
+        daily_amount_out: Option<f64>,
 
         /// Amount out goal per day
         #[arg(short = 'o', long, required_unless_present = "daily_amount_out")]
-        daily_amount_in: Option<u64>,
+        daily_amount_in: Option<f64>,
 
         /// Streams per day
         #[arg(long)]
@@ -75,8 +75,8 @@ impl TSCli {
     // Method to handle the 'stream' subcommand
     async fn run_stream(
         &self,
-        daily_amount_out: Option<u64>,
-        daily_amount_in: Option<u64>,
+        daily_amount_out: Option<f64>,
+        daily_amount_in: Option<f64>,
         daily_streams: u64,
         min_price: f64,
     ) {
@@ -88,9 +88,9 @@ impl TSCli {
 
         // Get the daily amount out or in based on the user input
         let (swap_type, amount) = if let Some(amount_out) = daily_amount_out {
-            ("amount_out", amount_out)
+            ("amount_out", (amount_out * 1_000_000.0) as u64)
         } else if let Some(amount_in) = daily_amount_in {
-            ("amount_in", amount_in)
+            ("amount_in", (amount_in * 1_000_000.0) as u64)
         } else {
             unreachable!()
         };
@@ -132,8 +132,8 @@ impl TSCli {
         if get_user_confirmation(
             &signer.get_account_address(),
             balances,
-            daily_amount_out,
-            daily_amount_in,
+            amount,
+            swap_type,
             daily_streams,
             min_price,
         ) {
@@ -181,18 +181,32 @@ impl TSCli {
 }
 
 // Function to get user confirmation (y/n)
-fn get_user_confirmation(address: &str, balances: Vec<CoinAmount>, daily_amount_out: Option<u64>, daily_amount_in: Option<u64>, daily_streams: u64, min_price: f64) -> bool {
+fn get_user_confirmation(address: &str, balances: Vec<CoinAmount>, amount: u64, swap_type: &str, daily_streams: u64, min_price: f64) -> bool {   
     // ask user to confirm the address and params
     println!("\nPlease confirm the following details for the Trade Stream:");
     println!(" 1. Account Address: {}", address);
     for balance in &balances {
         println!("    - {} {}", balance.coin, balance.amount.to_formatted_string(&Locale::en));
     }
-    if let Some(amount_out) = daily_amount_out {
-        println!(" 2. Daily Amount Out: {} {}", get_constants().token_out, amount_out.to_formatted_string(&Locale::en));
-    }
-    if let Some(amount_in) = daily_amount_in {
-        println!(" 2. Daily Amount In: {} {}", get_constants().token_in, amount_in.to_formatted_string(&Locale::en));
+    match swap_type {
+        "amount_out" => {
+            let coin_amount = CoinAmount {
+                coin: get_constants().token_out,
+                amount: amount,
+            };
+            println!(" 2. Daily Amount Out: {}", coin_amount);
+        },
+        "amount_in" => {
+            let coin_amount = CoinAmount {
+                coin: get_constants().token_out,
+                amount: amount,
+            };
+            println!(" 2. Daily Amount In: {}", coin_amount);
+        },
+        _ => {
+            eprintln!("Invalid swap type: {}", swap_type);
+            return false;
+        }
     }
     println!(" 3. Daily Streams: {}", daily_streams.to_formatted_string(&Locale::en));
     println!(" 4. Min Price: {} {}", get_constants().token_out, min_price);
@@ -214,7 +228,7 @@ fn get_user_confirmation(address: &str, balances: Vec<CoinAmount>, daily_amount_
         "n" => false,
         _ => {
             println!("Invalid input, please enter 'y' or 'n'");
-            get_user_confirmation(address, balances, daily_amount_out, daily_amount_in, daily_streams, min_price) // Recursively ask again on invalid input
+            get_user_confirmation(address, balances, amount, swap_type, daily_streams, min_price) // Recursively ask again on invalid input
         }
     }
 }

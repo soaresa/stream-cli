@@ -22,7 +22,7 @@ pub struct Streamer {
 impl Streamer {
     pub fn new(daily_amount: u64, swap_type: &'static str, daily_streams: u64, min_price: f64) -> Self {
         Streamer {
-            daily_amount: daily_amount * 1_000_000, 
+            daily_amount,
             swap_type,
             daily_streams,
             min_price

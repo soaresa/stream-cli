@@ -89,7 +89,7 @@ To start the streaming trades, use the `stream` subcommand with the appropriate 
 - **Obtain 20 tokens over 4 trades per day** at a minimum price of 0.1 per token:
 
 ```bash
-cargo run -- stream --daily-amount-out 20 --daily-streams 4 --min-price 0.1
+cargo run -- stream --daily-amount-out 20.5 --daily-streams 4 --min-price 0.1
 ```
 
 - **Sell 1000 tokens over 4 trades per day**, with a target minimum price of 0.1 per token:
@@ -98,7 +98,7 @@ cargo run -- stream --daily-amount-out 20 --daily-streams 4 --min-price 0.1
 cargo run -- stream --daily-amount-in 1000 --daily-streams 4 --min-price 0.1
 ```
 
-In these examples, the program will either aim to **obtain** 20 tokens throughout the day or **sell** 1000 tokens, executing trades across 4 intervals, depending on which option is provided (`amount-in` or `amount-out`).
+In these examples, the program will either aim to **obtain** 20.5 tokens throughout the day or **sell** 1000 tokens, executing trades across 4 intervals, depending on which option is provided (`amount-in` or `amount-out`).
 
 ### **Summary Command**
 
@@ -117,6 +117,7 @@ This will display key metrics for each account, grouped by pool ID, token in, an
 - **Transaction Counts**: Total, successful, and failed transactions.
 - **Total Tokens In/Out**: Aggregated amounts of tokens exchanged.
 - **Average Price**: The average swap price over successful transactions.
+- **Total Gas**: The total gas used to execute all streams.
 - **Swap Type Counts**: Number of `amount_in` and `amount_out` swaps.
 
 **Example of Output:**
@@ -134,7 +135,7 @@ This will display key metrics for each account, grouped by pool ID, token in, an
       "total_tokens_in": "TOSMO 399,996.123456",
       "total_tokens_out": "TUSDC 366,887.123456",
       "average_price": "TUSDC 1.123456",
-      "total_gas_used": "OSMO 1.987654",
+      "total_gas_used": "TOSMO 1.987654",
       "swap_amount_in_count": 12,
       "swap_amount_out_count": 0
     }
