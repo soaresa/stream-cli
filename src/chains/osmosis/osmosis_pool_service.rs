@@ -11,6 +11,9 @@ use super::osmosis_transaction::broadcast_tx;
 use osmosis_std::types::osmosis::gamm::v1beta1::{MsgSwapExactAmountOut, SwapAmountOutRoute, MsgSwapExactAmountIn, SwapAmountInRoute};
 use osmosis_std::types::cosmos::base::v1beta1::Coin as OsmosisCoin;
 
+use serde_json::json;
+use cosmrs::proto::cosmos::tx::v1beta1::{SimulateRequest, SimulateResponse};
+
 use cosmrs::tendermint::{block::Height, chain::Id};
 use cosmrs::tx::{Body, Fee, AuthInfo, SignDoc, Tx};
 use cosmrs::Any;
@@ -21,6 +24,46 @@ use anyhow::Result;
 use prost::Message;
 
 use reqwest::Client;
+
+// TODO: WIP Function to simulate a transaction cost
+pub async fn simulate_tx(tx: Tx) -> Result<()> {
+    // Step 1: Encode the transaction into the protobuf format
+    let proto_tx: cosmrs::proto::cosmos::tx::v1beta1::Tx = tx.into();
+    let mut tx_bytes = Vec::new();
+    proto_tx.encode(&mut tx_bytes).map_err(|e| anyhow::anyhow!("Failed to encode Tx: {}", e))?;
+
+    // Step 2: Convert the tx bytes to Base64
+    let tx_base64 = base64::encode(&tx_bytes);
+
+    // Step 3: Prepare the request body
+    let simulate_body = json!({
+        "tx_bytes": tx_base64
+    });
+
+    // Step 4: Make the request to the simulate endpoint
+    let client = Client::new();
+    let simulate_url = "https://lcd.osmotest5.osmosis.zone/cosmos/tx/v1beta1/simulate".to_string();
+    let response = client
+        .post(simulate_url)
+        .json(&simulate_body)
+        .send()
+        .await?;
+
+    // Step 5: Parse the response
+    let response_json = response.json::<serde_json::Value>().await.map_err(|e| anyhow::anyhow!("Failed to parse response: {}", e))?;
+
+    // Step 6: Extract relevant data
+    if let Some(simulate_response) = response_json.get("gas_info") {
+        let gas_used = simulate_response["gas_used"].as_str();
+        let gas_wanted = simulate_response["gas_wanted"].as_str();
+
+        println!("Gas Used: {:?}, Gas Wanted: {:?}", gas_used, gas_wanted);
+    } else {
+        println!("Failed to get gas info from response: {:?}", response_json);
+    }
+
+    Ok(())
+}
 
 pub async fn perform_swap(
     signer: &Signer,
@@ -44,7 +87,7 @@ pub async fn perform_swap(
 
     // Step 3. Get the current block height
     let current_height = get_current_block_height().await.map_err(|e| anyhow::anyhow!("Failed to get current block height: {}", e))?;
-    let timeout_height = current_height + 1000;  // Set a future timeout height
+    let timeout_height = current_height + 200;  // Set a future timeout height
 
     // Step 4. Create TxBody
     let tx_body = Body {
@@ -62,8 +105,8 @@ pub async fn perform_swap(
     // Step 6: Create AuthInfo with fee details
     let fee = Fee::from_amount_and_gas(CosmosCoin {
         denom: "uosmo".parse().unwrap(),
-        amount: Decimal::from(320_000u64),
-    }, 350_000);
+        amount: Decimal::from(CONFIG.gas_config.amount),
+    }, CONFIG.gas_config.gas_limit);
     let auth_info = AuthInfo {
         signer_infos: vec![signer_info],
         fee,
@@ -77,6 +120,7 @@ pub async fn perform_swap(
 
     // Step 8: Create and broadcast the transaction
     let tx_parsed = Tx::from_bytes(&tx_bytes).map_err(|e| anyhow::anyhow!("Failed to parse transaction bytes: {}", e))?;
+    // simulate_tx(tx_parsed.clone()).await?;
     broadcast_tx(tx_parsed, sender_address, pool_id, coin_in, coin_out, amount, swap_type, min_price).await
 }
 

@@ -8,8 +8,8 @@ osmosis_tx_details_url = "https://lcd.osmotest5.osmosis.zone/cosmos/tx/v1beta1/t
 
 [gas_config]
 token = "TOSMO"
-amount = 320_000
-gas_limit = 350_000
+amount = 50_000
+gas_limit = 250_00
 
 [env_constants]
 pool_id = 15

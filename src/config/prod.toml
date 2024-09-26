@@ -8,8 +8,8 @@ osmosis_tx_details_url = "https://lcd.osmosis.zone/cosmos/tx/v1beta1/txs/{}"
 
 [gas_config]
 token = "OSMO"
-amount = 320000
-gas_limit = 350000
+amount = 50_000
+gas_limit = 300_000
 
 [env_constants]
 pool_id = 1721

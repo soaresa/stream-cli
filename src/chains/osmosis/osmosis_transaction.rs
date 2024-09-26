@@ -14,7 +14,7 @@ use regex::Regex;
 use cosmrs::tx::Tx;
 use prost::Message;
 use crate::utils::format_token_amount_with_denom;
-use log::{info, error, warn};
+use log::{info, error, warn, debug};
 
 
 #[derive(Serialize, Deserialize, Debug)]
@@ -53,7 +53,7 @@ pub async fn broadcast_tx(
     let broadcast_url = get_osmosis_broadcast_tx_url();
     let broadcast_body = json!({
         "tx_bytes": tx_base64,
-        "mode": 2
+        "mode": "BROADCAST_MODE_ASYNC"
     });
     let response = client.post(broadcast_url)
         .json(&broadcast_body)
@@ -71,8 +71,14 @@ pub async fn broadcast_tx(
     info!(">>> Transaction broadcasted");
 
     // Store the broadcasted transaction
-    let txhash = response_json["tx_response"]["txhash"].as_str().unwrap();
-    let code = response_json["tx_response"]["code"].as_u64();
+    let txhash = match response_json["tx_response"]["txhash"].as_str() {
+        Some(hash) => hash,
+        None => return Err(anyhow::anyhow!("Failed to get txhash from response")),
+    };    
+    let code = match response_json["tx_response"]["code"].as_u64() {
+        Some(code) => Some(code),
+        None => return Err(anyhow::anyhow!("Failed to get code from response")),
+    };
     let raw_log = response_json["tx_response"]["raw_log"].as_str().map(String::from);
     let _ = store_broadcasted_transaction(
         sender_address,
@@ -272,7 +278,7 @@ async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<Optio
             Ok((code, raw_log, gas_used, tokens_in, tokens_out)) => {
                 if code.is_some() {
                     // Transaction was executed
-                    update_transaction_status(txhash, account_id, "executed", code, raw_log, gas_used, tokens_in, tokens_out).await?;
+                    update_transaction(txhash, account_id, "executed", code, raw_log, gas_used, tokens_in, tokens_out).await?;
                     return Ok(code);
                 } else {
                     info!("... Transaction not yet confirmed");
@@ -290,8 +296,8 @@ async fn poll_transaction_status(txhash: &str, account_id: &str) -> Result<Optio
 }
 
 
-// Function to update the transaction status in the JSON file
-async fn update_transaction_status(
+// Function to update the transaction details in the JSON file
+async fn update_transaction(
     txhash: &str,
     account_id: &str,
     status: &str,
@@ -320,6 +326,8 @@ async fn update_transaction_status(
             transaction["tokens_in"] = json!(tokens_in);
             transaction["tokens_out"] = json!(tokens_out);
 
+            debug!("update_transaction: {}", transaction);
+
             // Write the updated transactions back to the file
             fs::write(file_path, serde_json::to_string_pretty(&transactions)?)?;
         }
@@ -331,7 +339,7 @@ async fn update_transaction_status(
 // Function to handle timeout scenario
 async fn update_transaction_with_timeout(txhash: &str) -> Result<(), Box<dyn std::error::Error>> {
     // Implement your logic to update the transaction with timeout error here
-    update_transaction_status(txhash, "account_id", "timeout", None, None, None, None, None).await?;
+    update_transaction(txhash, "account_id", "timeout", None, None, None, None, None).await?;
     Ok(())
 }
 
