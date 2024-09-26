@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc, Duration as ChronoDuration};
 use rand::Rng;
 use crate::chains::osmosis::osmosis_key_service::Signer;
 use crate::trade_service::TradeTask;
-use crate::constants::get_constants;
+use crate::config::constants::get_constants;
 use std::io::{self, Write};
 use tokio::sync::watch;
 use log::{info, warn, error};

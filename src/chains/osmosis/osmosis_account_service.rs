@@ -17,23 +17,6 @@ struct BalancesResponse {
     balances: Vec<Balance>,
 }
 
-pub async fn fetch_account_balance(address: &str, coin: Coin) -> Result<u64, Box<dyn StdError>> {
-    let url = get_account_balance_url();
-    let url_formated = url.replace("{}", address);
-    let response = reqwest::get(&url_formated).await?;
-    let response = response.error_for_status()?;
-    
-    let balances: BalancesResponse = response.json().await?;
-    let balance = balances.balances.iter().find(|b| b.denom == coin.denom());
-    let amount = match balance {
-        Some(b) => b.amount.parse()?,
-        None => 0,
-    };
-
-    Ok(amount)
-}
-
-
 #[derive(Deserialize, Debug)]
 struct BaseAccount {
     account_number: String,

@@ -9,7 +9,7 @@ use serde::{Serialize, Deserialize};
 use serde_json::{Value, json};
 use anyhow::Error;
 use reqwest::Client;
-use crate::configs::get_config_path;
+use crate::config::env_config::get_config_path;
 use crate::chains::coin::Coin;
 use regex::Regex;
 use cosmrs::tx::Tx;

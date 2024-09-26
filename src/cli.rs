@@ -1,4 +1,4 @@
-use crate::{constants::get_constants, key_manager::get_account_from_prompt, streamer::Streamer};
+use crate::{config::constants::get_constants, key_manager::get_account_from_prompt, streamer::Streamer};
 use clap::{Parser, Subcommand};
 use std::io::{self, Write};
 use crate::chains::osmosis::osmosis_key_service::Signer;

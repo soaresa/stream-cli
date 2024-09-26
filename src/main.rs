@@ -1,13 +1,13 @@
 use env_logger;
 use clap::Parser;
 use tstream::cli;
-use tstream::configs;
+use tstream::config::env_config;
 use tokio::runtime::Runtime;
 
 fn main() {
     env_logger::init();
 
-    configs::initialize();
+    env_config::initialize();
 
     let rt = Runtime::new().unwrap();
     rt.block_on(cli::TSCli::parse().run());
