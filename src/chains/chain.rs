@@ -1,6 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::env;
+use crate::config::CONFIG;
 
 // Enum for different chain types
 #[derive(Serialize, Deserialize, Copy, Clone, PartialEq)]
@@ -20,9 +20,9 @@ impl fmt::Display for ChainType {
 
 // implement an function to return the chain id 
 impl ChainType {
-  pub fn chain_id(&self) -> String {
+  pub fn chain_id(&self) -> &String {
     match self {
-      ChainType::Osmosis => env::var("OSMOSIS_CHAIN_ID").unwrap_or_else(|_| "osmosis-1".to_string()),
+      ChainType::Osmosis => &CONFIG.osmosis_chain_id
       // Add other chains as needed
     }
   }

@@ -26,6 +26,7 @@ zeroize = "1.5"
 num-format = "0.4"
 regex = "1"
 indicatif = "0.17"
+config = "0.13"
 
 cosmrs = "0.7.1"
 osmosis-std = "=0.1.6"

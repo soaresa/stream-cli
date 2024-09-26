@@ -1,5 +1,5 @@
 use log::{error, info, warn};
-use crate::config::gas_config::GasConfig;
+use crate::config::CONFIG;
 use crate::chains::coin::Coin;
 use crate::chains::osmosis::osmosis_pool_service;
 use crate::chains::osmosis::osmosis_key_service::Signer;
@@ -77,7 +77,7 @@ impl TradeTask {
             }
         };
         
-        if let Err(e) = has_sufficient_balance(&balances, self.token_in.denom(), trade_amount) {
+        if let Err(e) = has_sufficient_balance(&balances, self.token_in, trade_amount) {
             error!("{}", e);
             return Ok(false);
         }
@@ -85,8 +85,7 @@ impl TradeTask {
 
         // 3. Ensure account has enough balance to pay for fees
         // TODO: Implement gas station
-        let gas_config = GasConfig::default();
-        if let Err(e) = has_sufficient_balance(&balances, gas_config.token.denom(), gas_config.gas_limit) {
+        if let Err(e) = has_sufficient_balance(&balances, CONFIG.gas_config.token, CONFIG.gas_config.gas_limit) {
             error!("{}", e);
             return Ok(false);
         }
@@ -106,7 +105,8 @@ impl TradeTask {
 }
 
 // Helper function
-fn has_sufficient_balance(balances: &[CoinAmount], denom: &str, required_amount: u64) -> Result<(), anyhow::Error> {
+fn has_sufficient_balance(balances: &[CoinAmount], token: Coin, required_amount: u64) -> Result<(), anyhow::Error> {
+    let denom = token.denom();
     if let Some(balance) = balances.iter().find(|b| b.coin.denom() == denom) {
         if balance.amount < required_amount {
             return Err(anyhow!("Insufficient balance for token: {}", denom));

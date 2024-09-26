@@ -254,7 +254,7 @@ To stop the program gracefully, press `Ctrl + C`. This will ensure the program c
 ## Limitations
 
 - **Network Support**: Currently, Stream CLI only integrates with the Osmosis network.
-- **Configuration**: Pool IDs and tokens for each environment are defined in the `constants.rs` module.
+- **Configuration**: The pool IDs, gas limits, and tokens for each environment are defined in the `src/config/prod.toml` and `src/config/test.toml` files.
 
 ## Environments
 

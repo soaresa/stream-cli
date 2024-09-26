@@ -1,6 +1,5 @@
 use std::fmt::Debug;
 use std::fs;
-use std::env;
 use std::path::PathBuf;
 use std::time::{SystemTime, UNIX_EPOCH};
 use std::thread;
@@ -9,7 +8,7 @@ use serde::{Serialize, Deserialize};
 use serde_json::{Value, json};
 use anyhow::Error;
 use reqwest::Client;
-use crate::config::env_config::get_config_path;
+use crate::config::{CONFIG, get_config_path};
 use crate::chains::coin::Coin;
 use regex::Regex;
 use cosmrs::tx::Tx;
@@ -434,9 +433,9 @@ pub fn summarize_transactions() -> Result<Value, Box<dyn std::error::Error>> {
 
 
 fn get_osmosis_broadcast_tx_url() -> String {
-    env::var("OSMOSIS_BROADCAST_TX_URL").unwrap_or_else(|_| "https://lcd.osmosis.zone/cosmos/tx/v1beta1/txs".to_string())
+    CONFIG.osmosis_broadcast_tx_url.clone()
 }
 
 fn get_osmosis_tx_details_url() -> String {
-    env::var("OSMOSIS_TX_DETAILS_URL").unwrap_or_else(|_| "https://lcd.osmosis.zone/cosmos/tx/v1beta1/txs/{}".to_string())
+    CONFIG.osmosis_tx_details_url.clone()
 }

@@ -1,6 +1,7 @@
 use serde::{Deserialize, Serialize};
 use std::fmt;
 use crate::utils::format_token_amount_with_denom;
+use std::str::FromStr;
 
 // Enum for coins with associated denoms
 #[derive(Serialize, Deserialize, Clone, Debug, Copy, PartialEq, Eq )]
@@ -23,6 +24,21 @@ impl fmt::Display for Coin {
             Coin::TUSDC => "TUSDC",
         };
         write!(f, "{}", coin_name)
+    }
+}
+
+impl FromStr for Coin {
+    type Err = ();
+
+    fn from_str(input: &str) -> Result<Coin, Self::Err> {
+        match input {
+            "WLibra" => Ok(Coin::WLibra),
+            "USDC" => Ok(Coin::USDC),
+            "OSMO" => Ok(Coin::OSMO),
+            "TOSMO" => Ok(Coin::TOSMO),
+            "TUSDC" => Ok(Coin::TUSDC),
+            _ => Err(()),
+        }
     }
 }
 

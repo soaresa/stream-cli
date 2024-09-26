@@ -1,9 +1,9 @@
 use serde::Deserialize;
 use std::error::Error as StdError;
-use std::env;
 use reqwest;
-use crate::chains::coin::{Coin, CoinAmount};
 use reqwest::Client;
+use crate::config::CONFIG;
+use crate::chains::coin::{Coin, CoinAmount};
 use cosmrs::tx::SequenceNumber;
 
 #[derive(Deserialize)]
@@ -87,9 +87,9 @@ pub async fn fetch_balances(address: &str, coins: Option<Vec<Coin>>) -> Result<V
 
 
 fn get_account_balance_url() -> String {
-    env::var("OSMOSIS_ACCOUNT_BALANCES_URL").unwrap_or_else(|_| "https://lcd-osmosis.imperator.co/cosmos/bank/v1beta1/balances/{}".to_string())
+    CONFIG.osmosis_account_balances_url.clone()
 }
 
 pub fn get_osmosis_account_info_url() -> String {
-    env::var("OSMOSIS_ACCOUNT_INFO_URL").unwrap_or_else(|_| "https://lcd-osmosis.imperator.co/cosmos/auth/v1beta1/accounts/{}".to_string())
+    CONFIG.osmosis_account_info_url.clone()
 }

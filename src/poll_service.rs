@@ -3,7 +3,7 @@ use chrono::{DateTime, Utc, Duration as ChronoDuration};
 use rand::Rng;
 use crate::chains::osmosis::osmosis_key_service::Signer;
 use crate::trade_service::TradeTask;
-use crate::config::constants::get_constants;
+use crate::config::CONFIG;
 use std::io::{self, Write};
 use tokio::sync::watch;
 use log::{info, warn, error};
@@ -23,7 +23,6 @@ pub async fn start_polling(
     let mut next_trade: DateTime<Utc> = Utc::now();
     let mut trade_executed = true;
     let trade_amount: u64 = daily_amount / streams_per_day;
-    let constants = get_constants();
     let mut jump = false;
 
     // Use watch channel to signal stop request
@@ -88,9 +87,9 @@ pub async fn start_polling(
             
             // Create a new trade task
             let task = TradeTask::new(
-                constants.pool_id,
-                constants.token_in.clone(),
-                constants.token_out.clone(),
+                CONFIG.env_constants.pool_id,
+                CONFIG.env_constants.token_in.clone(),
+                CONFIG.env_constants.token_out.clone(),
                 trade_amount,
                 swap_type,
                 min_price,

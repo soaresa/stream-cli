@@ -1,6 +1,7 @@
 use serde::Deserialize;
 use std::error::Error as StdError;
 use reqwest;
+use crate::config::CONFIG;
 use crate::chains::coin::Coin;
 use crate::chains::chain::ChainType;
 use crate::chains::osmosis::osmosis_key_service::Signer;
@@ -20,7 +21,6 @@ use anyhow::Result;
 use prost::Message;
 
 use reqwest::Client;
-use std::env;
 
 pub async fn perform_swap(
     signer: &Signer,
@@ -71,7 +71,7 @@ pub async fn perform_swap(
 
     // Step 7: Create and sign the doc
     let comos_id = ChainType::Osmosis.chain_id();
-    let chain_id = Id::try_from(comos_id)?;
+    let chain_id = Id::try_from(comos_id.clone())?;
     let sign_doc = SignDoc::new(&tx_body, &auth_info, &chain_id, account_number).map_err(|e| anyhow::anyhow!("Failed to create SignDoc: {}", e))?;
     let tx_bytes = signer.sign_doc(sign_doc).map_err(|e| anyhow::anyhow!("Failed to sign the transaction: {}", e))?;
 
@@ -269,9 +269,9 @@ pub async fn fetch_coin_price(pool_id: u64) -> Result<f64, Box<dyn StdError>> {
 }
 
 fn get_osmosis_rpc_url() -> String {
-    env::var("OSMOSIS_STATUS_URL").unwrap_or_else(|_| "https://rpc.osmosis.zone/status".to_string())
+    CONFIG.osmosis_status_url.clone()
 }
 
 fn get_osmosis_pool_price_url() -> String {
-    env::var("OSMOSIS_POOL_PRICE_URL").unwrap_or_else(|_| "https://lcd-osmosis.imperator.co/osmosis/gamm/v1beta1/pools/{}".to_string())
+    CONFIG.osmosis_pool_price_url.clone()
 }

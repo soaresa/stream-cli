@@ -1,0 +1,18 @@
+osmosis_chain_id = "osmosis-1"
+osmosis_status_url = "https://rpc.osmosis.zone/status"
+osmosis_account_info_url = "https://lcd-osmosis.imperator.co/cosmos/auth/v1beta1/accounts/{}"
+osmosis_broadcast_tx_url = "https://lcd.osmosis.zone/cosmos/tx/v1beta1/txs"
+osmosis_pool_price_url = "https://lcd-osmosis.imperator.co/osmosis/gamm/v1beta1/pools/1721"
+osmosis_account_balances_url = "https://lcd-osmosis.imperator.co/cosmos/bank/v1beta1/balances/{}"
+osmosis_tx_details_url = "https://lcd.osmosis.zone/cosmos/tx/v1beta1/txs/{}"
+
+[gas_config]
+token = "OSMO"
+amount = 320000
+gas_limit = 350000
+
+[env_constants]
+pool_id = 1721
+token_in = "WLibra"
+token_out = "USDC"
+gas_token = "OSMO"

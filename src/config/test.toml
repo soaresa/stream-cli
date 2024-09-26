@@ -1,0 +1,18 @@
+osmosis_chain_id = "osmo-test-5"
+osmosis_status_url = "https://rpc.osmotest5.osmosis.zone/status"
+osmosis_account_info_url = "https://lcd.osmotest5.osmosis.zone/cosmos/auth/v1beta1/accounts/{}"
+osmosis_broadcast_tx_url = "https://lcd.osmotest5.osmosis.zone/cosmos/tx/v1beta1/txs"
+osmosis_pool_price_url = "https://lcd.osmotest5.osmosis.zone/osmosis/gamm/v1beta1/pools/{}"
+osmosis_account_balances_url = "https://lcd.osmotest5.osmosis.zone/cosmos/bank/v1beta1/balances/{}"
+osmosis_tx_details_url = "https://lcd.osmotest5.osmosis.zone/cosmos/tx/v1beta1/txs/{}"
+
+[gas_config]
+token = "TOSMO"
+amount = 320_000
+gas_limit = 350_000
+
+[env_constants]
+pool_id = 15
+token_in = "TOSMO"
+token_out = "TUSDC"
+gas_token = "TOSMO"

@@ -1,12 +1,12 @@
-use crate::{config::constants::get_constants, key_manager::get_account_from_prompt, streamer::Streamer};
 use clap::{Parser, Subcommand};
 use std::io::{self, Write};
-use crate::chains::osmosis::osmosis_key_service::Signer;
 use num_format::{Locale, ToFormattedString};
+use log::{info, error};
+use crate::{key_manager::get_account_from_prompt, streamer::Streamer, config::CONFIG};
+use crate::chains::osmosis::osmosis_key_service::Signer;
 use crate::chains::osmosis::osmosis_account_service::fetch_balances;
 use crate::chains::osmosis::osmosis_transaction::summarize_transactions;
 use crate::chains::coin::CoinAmount;
-use log::{info, error};
 
 /// Stream CLI - Automate your crypto trading strategy
 #[derive(Parser, Debug)]
@@ -197,14 +197,14 @@ fn get_user_confirmation(address: &str, balances: Vec<CoinAmount>, amount: u64, 
     match swap_type {
         "amount_out" => {
             let coin_amount = CoinAmount {
-                coin: get_constants().token_out,
+                coin: CONFIG.env_constants.token_out,
                 amount: amount,
             };
             println!("\n 2. Daily Amount Out: {}", coin_amount);
         },
         "amount_in" => {
             let coin_amount = CoinAmount {
-                coin: get_constants().token_out,
+                coin: CONFIG.env_constants.token_out,
                 amount: amount,
             };
             println!("\n 2. Daily Amount In:  {}", coin_amount);
@@ -217,10 +217,10 @@ fn get_user_confirmation(address: &str, balances: Vec<CoinAmount>, amount: u64, 
 
     // Print additional details
     println!(" 3. Daily Streams:    {}", daily_streams.to_formatted_string(&Locale::en));
-    println!(" 4. Min Price:        {} {}", get_constants().token_out, min_price);
-    println!(" 5. Token In:         {}", get_constants().token_in);
-    println!(" 6. Token Out:        {}", get_constants().token_out);
-    println!(" 7. Pool ID:          {}\n", get_constants().pool_id);
+    println!(" 4. Min Price:        {} {}", CONFIG.env_constants.token_out, min_price);
+    println!(" 5. Token In:         {}", CONFIG.env_constants.token_in);
+    println!(" 6. Token Out:        {}", CONFIG.env_constants.token_out);
+    println!(" 7. Pool ID:          {}\n", CONFIG.env_constants.pool_id);
     
     print!("Do you want to continue? (y/n): ");
     io::stdout().flush().unwrap(); // Ensures the prompt is displayed correctly
