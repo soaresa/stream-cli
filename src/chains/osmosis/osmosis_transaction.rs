@@ -373,7 +373,6 @@ pub fn summarize_transactions() -> Result<Value, Box<dyn std::error::Error>> {
                             "tx_failed_count": 0,
                             "total_tokens_in": 0,
                             "total_tokens_out": 0,
-                            "total_price": 0.0,
                             "total_gas_used": 0,
                             "swap_amount_in_count": 0,
                             "swap_amount_out_count": 0,                            
@@ -389,12 +388,10 @@ pub fn summarize_transactions() -> Result<Value, Box<dyn std::error::Error>> {
 
                         match status_code {
                             0 => {
-                                let price = tokens_in as f64 / tokens_out as f64;
                                 *pool_summary_obj.get_mut("tx_total_count").unwrap() = json!(pool_summary_obj["tx_total_count"].as_u64().unwrap() + 1);
                                 *pool_summary_obj.get_mut("tx_success_count").unwrap() = json!(pool_summary_obj["tx_success_count"].as_u64().unwrap() + 1);
                                 *pool_summary_obj.get_mut("total_tokens_in").unwrap() = json!(pool_summary_obj["total_tokens_in"].as_u64().unwrap() + tokens_in);
                                 *pool_summary_obj.get_mut("total_tokens_out").unwrap() = json!(pool_summary_obj["total_tokens_out"].as_u64().unwrap() + tokens_out);
-                                *pool_summary_obj.get_mut("total_price").unwrap() = json!(pool_summary_obj["total_price"].as_f64().unwrap() + price);
                                 *pool_summary_obj.get_mut("total_gas_used").unwrap() = json!(pool_summary_obj["total_gas_used"].as_u64().unwrap() + gas_used); // Add gas used
                             },
                             _ => *pool_summary_obj.get_mut("tx_failed_count").unwrap() = json!(pool_summary_obj["tx_failed_count"].as_u64().unwrap() + 1),
@@ -407,9 +404,8 @@ pub fn summarize_transactions() -> Result<Value, Box<dyn std::error::Error>> {
             for (_, pool_summary) in pool_summaries.iter_mut() {
                 if let Some(pool_summary_obj) = pool_summary.as_object_mut() {
                     let executed_transactions = pool_summary_obj["tx_total_count"].as_u64().unwrap_or(0);
-                    let total_price = pool_summary_obj["total_price"].as_f64().unwrap_or(0.0);
                     let average_price = if executed_transactions > 0 {
-                        total_price / executed_transactions as f64
+                        pool_summary_obj["total_tokens_out"].as_f64().unwrap() / pool_summary_obj["total_tokens_in"].as_f64().unwrap()
                     } else {
                         0.0
                     };
@@ -418,7 +414,6 @@ pub fn summarize_transactions() -> Result<Value, Box<dyn std::error::Error>> {
                     pool_summary_obj.insert("total_tokens_in".to_string(), json!(format_token_amount_with_denom(pool_summary_obj["total_tokens_in"].as_u64().unwrap_or(0), pool_summary_obj["token_in"].as_str().unwrap_or("unknown"))));
                     pool_summary_obj.insert("total_tokens_out".to_string(), json!(format_token_amount_with_denom(pool_summary_obj["total_tokens_out"].as_u64().unwrap_or(0), pool_summary_obj["token_out"].as_str().unwrap_or("unknown"))));
                     pool_summary_obj.insert("total_gas_used".to_string(), json!(format_token_amount_with_denom(pool_summary_obj["total_gas_used"].as_u64().unwrap_or(0), Coin::OSMO.to_string().as_str())));
-                    pool_summary_obj.remove("total_price");
                 }
             }
 
